@@ -1,0 +1,59 @@
+#!/bin/sh
+
+# Script pour démarrer, arrêter et vérifier le statut du serveur Python Flask.
+
+PYTHON="/usr/bin/python3"
+PID_FILE="/var/run/coyote-wol-tool.pid"
+LOG_FILE="/var/log/coyote-wol-tool.log"
+APP_PATH="/var/packages/CoyoteWOLtool/target/src/main.py"
+
+start_daemon() {
+    echo "Starting Coyote WOL tool..." >> ${LOG_FILE}
+    # Démarrer le serveur en arrière-plan
+    ${PYTHON} ${APP_PATH} >> ${LOG_FILE} 2>&1 &
+    # Récupérer et stocker le PID du processus
+    echo $! > ${PID_FILE}
+}
+
+stop_daemon() {
+    if [ -f ${PID_FILE} ]; then
+        PID=$(cat ${PID_FILE})
+        echo "Stopping Coyote WOL tool (PID: ${PID})..." >> ${LOG_FILE}
+        kill ${PID}
+        rm -f ${PID_FILE}
+    else
+        echo "Coyote WOL tool not running." >> ${LOG_FILE}
+    fi
+}
+
+daemon_status() {
+    if [ -f ${PID_FILE} ]; then
+        PID=$(cat ${PID_FILE})
+        if ps -p ${PID} > /dev/null; then
+            echo "Coyote WOL tool is running."
+        else
+            echo "Coyote WOL tool is not running, but PID file exists. Cleaning up."
+            rm -f ${PID_FILE}
+        fi
+    else
+        echo "Coyote WOL tool is not running."
+    fi
+}
+
+case $1 in
+    start)
+        start_daemon
+        ;;
+    stop)
+        stop_daemon
+        ;;
+    status)
+        daemon_status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

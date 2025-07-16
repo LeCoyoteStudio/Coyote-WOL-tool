@@ -1,0 +1,21 @@
+package="CoyoteWOLtool"
+version="2.1.0"
+arch="noarch"
+maintainer="Coyote Studio"
+maintainer_url="https://coyote.studio"
+description="From a Synology NAS - Scans the network and allows remote waking of devices via Wake-on-LAN."
+[scripts]
+start-stop-status="scripts/start-stop-status"
+postinst="scripts/postinst"
+postuninst="scripts/postuninst"
+[ui]
+app="CoyoteWOLtool.App"
+type="url"
+url="/webman/3rdparty/CoyoteWOLtool/"
+title="Coyote WOL tool"
+description="Outil Wake-on-LAN"
+icon="images/CoyoteWOLtool-72.png"
+[application]
+type="python"
+script="src/main.py"
+port="9989"

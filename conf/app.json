@@ -1,0 +1,10 @@
+{
+  "app": {
+      "CoyoteWOLtool.App": {
+          "text": "Coyote WOL tool",
+          "icon": "images/CoyoteWOLtool-72.png",
+          "type": "url",
+          "url": "/webman/3rdparty/CoyoteWOLtool/"
+      }
+  }
+}

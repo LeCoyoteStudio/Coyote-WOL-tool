@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coyote WOL tool</title>
+    <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div id="mainPage">
+            <header>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
+                <h1 data-i18n="my_devices">Mes Appareils</h1>
+                <div class="header-controls">
+                    <select id="languageSelector" title="Changer de langue"></select>
+                    <button id="refreshButton" title="Rafraîchir">&#x21bb;</button>
+                </div>
+            </header>
+            
+            <main id="deviceListContainer"></main>
+            
+            <div id="loading" class="full-center"><p data-i18n="loading">Chargement des appareils...</p></div>
+            <div id="error" class="full-center hidden"><p id="errorMessage"></p></div>
+        </div>
+    </div>
+
+    <script>
+        // Le code JavaScript reste identique à la version précédente.
+        // Seule la source de l'image dans le HTML a changé.
+        document.addEventListener('DOMContentLoaded', () => {
+            const dom = {
+                mainPage: document.getElementById('mainPage'),
+                refreshButton: document.getElementById('refreshButton'),
+                deviceListContainer: document.getElementById('deviceListContainer'),
+                loadingIndicator: document.getElementById('loading'),
+                errorContainer: document.getElementById('error'),
+                errorMessage: document.getElementById('errorMessage'),
+                languageSelector: document.getElementById('languageSelector'),
+            };
+
+            const translations = {
+                en: { my_devices: "My Devices", loading: "Loading devices...", no_devices: "No devices found.", wake_device_title: "Wake up device", packet_sent_alert: "Wake-up packet sent to {mac}.", error_alert: "Error: {message}" },
+                fr: { my_devices: "Mes Appareils", loading: "Chargement des appareils...", no_devices: "Aucun appareil trouvé.", wake_device_title: "Réveiller l'appareil", packet_sent_alert: "Paquet de réveil envoyé à {mac}.", error_alert: "Erreur : {message}" },
+                es: { my_devices: "Mis Dispositivos", loading: "Cargando dispositivos...", no_devices: "No se encontraron dispositivos.", wake_device_title: "Despertar dispositivo", packet_sent_alert: "Paquete de despertar enviado a {mac}.", error_alert: "Error: {message}" },
+                de: { my_devices: "Meine Geräte", loading: "Geräte werden geladen...", no_devices: "Keine Geräte gefunden.", wake_device_title: "Gerät aufwecken", packet_sent_alert: "Aufweck-Paket an {mac} gesendet.", error_alert: "Fehler: {message}" }
+            };
+            const langNames = { en: "English", fr: "Français", es: "Español", de: "Deutsch" };
+            let currentLang = 'en';
+
+            function _(key, replacements = {}) {
+                let text = translations[currentLang]?.[key] || translations.en[key] || key;
+                for (const [k, v] of Object.entries(replacements)) {
+                    text = text.replace(`{${k}}`, v);
+                }
+                return text;
+            }
+
+            function setLanguage(lang) {
+                currentLang = lang;
+                localStorage.setItem('coyoteWolLanguage', lang);
+                document.documentElement.lang = lang;
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    el.textContent = _(el.dataset.i18n);
+                });
+                dom.refreshButton.title = _('wake_device_title');
+            }
+
+            async function apiCall(endpoint, options = {}) {
+                const lang = localStorage.getItem('coyoteWolLanguage') || 'en';
+                const url = new URL(endpoint, window.location.origin);
+                url.searchParams.append('lang', lang);
+                const headers = { 'Cache-Control': 'no-cache', ...options.headers };
+                const finalOptions = { ...options, headers };
+                const response = await fetch(url.toString(), finalOptions);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || "Communication error.");
+                }
+                return response.json();
+            }
+
+            function renderDeviceCard(device) {
+                const displayName = device.custom_name || device.hostname;
+                const isFavorite = device.is_favorite === 1;
+                const card = document.createElement('div');
+                card.className = `device-card ${isFavorite ? 'favorite' : ''}`;
+                card.innerHTML = `
+                    <div class="status-container" id="status-container-${device.mac.replace(/:/g, '')}">
+                        <div class="status-dot pending"></div>
+                    </div>
+                    <div class="device-info">
+                        <p class="name" title="${displayName}">${displayName}</p>
+                        <p class="mac">${device.mac}</p>
+                    </div>
+                    <button data-mac="${device.mac}" class="wake-button" title="${_('wake_device_title')}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
+                    </button>
+                `;
+                return card;
+            }
+
+            async function checkDeviceStatus(ip, mac) {
+                const statusContainer = document.getElementById(`status-container-${mac.replace(/:/g, '')}`);
+                if (!statusContainer) return;
+                const statusDot = statusContainer.querySelector('.status-dot');
+                try {
+                    const result = await apiCall(`/api/ping/${ip}`);
+                    statusDot.className = `status-dot ${result.status}`;
+                } catch (e) {
+                    statusDot.className = 'status-dot error';
+                }
+            }
+
+            async function fetchAndRender() {
+                dom.loadingIndicator.style.display = 'block';
+                dom.errorContainer.style.display = 'none';
+                dom.deviceListContainer.innerHTML = '';
+                try {
+                    const devices = await apiCall('/api/devices');
+                    dom.loadingIndicator.style.display = 'none';
+                    if (devices.length === 0) {
+                        dom.deviceListContainer.innerHTML = `<div class="full-center"><p>${_('no_devices')}</p></div>`;
+                    } else {
+                        devices.forEach(device => {
+                            const card = renderDeviceCard(device);
+                            dom.deviceListContainer.appendChild(card);
+                            checkDeviceStatus(device.ip, device.mac);
+                        });
+                    }
+                } catch (error) {
+                    dom.loadingIndicator.style.display = 'none';
+                    dom.errorContainer.style.display = 'block';
+                    dom.errorMessage.textContent = error.message;
+                }
+            }
+            
+            dom.deviceListContainer.addEventListener('click', async (event) => {
+                const wakeButton = event.target.closest('.wake-button');
+                if (wakeButton) {
+                    const mac = wakeButton.dataset.mac;
+                    try {
+                        const result = await apiCall('/api/wakeup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mac }),
+                        });
+                        alert(_('packet_sent_alert', { mac }));
+                        setTimeout(fetchAndRender, 5000);
+                    } catch (e) {
+                        alert(_('error_alert', { message: e.message }));
+                    }
+                }
+            });
+
+            dom.refreshButton.addEventListener('click', fetchAndRender);
+            dom.languageSelector.addEventListener('change', (e) => {
+                setLanguage(e.target.value);
+                fetchAndRender();
+            });
+
+            function init() {
+                Object.entries(langNames).forEach(([code, name]) => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = name;
+                    dom.languageSelector.appendChild(option);
+                });
+                const savedLang = localStorage.getItem('coyoteWolLanguage');
+                const browserLang = navigator.language.split('-')[0];
+                const initialLang = savedLang || (translations[browserLang] ? browserLang : 'en');
+                dom.languageSelector.value = initialLang;
+                setLanguage(initialLang);
+                fetchAndRender();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

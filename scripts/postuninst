@@ -1,0 +1,9 @@
+#!/bin/sh
+
+PACKAGE_NAME="CoyoteWOLtool"
+LOG_FILE="/var/log/${PACKAGE_NAME}_uninstall.log"
+
+echo "Starting ${PACKAGE_NAME} post-uninstallation script..." > ${LOG_FILE}
+/usr/syno/bin/synoschedtask --del name="${PACKAGE_NAME}_Scan" >> ${LOG_FILE} 2>&1
+echo "Post-uninstallation script finished." >> ${LOG_FILE}
+exit 0

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+PACKAGE_NAME="CoyoteWOLtool"
+PACKAGE_DIR="/var/packages/${PACKAGE_NAME}/target"
+PYTHON_BIN="/usr/bin/python3"
+PIP_BIN="/usr/bin/pip3"
+REQUIREMENTS_FILE="${PACKAGE_DIR}/src/requirements.txt"
+SCANNER_SCRIPT="${PACKAGE_DIR}/src/scanner.py"
+LOG_FILE="/var/log/${PACKAGE_NAME}.log"
+DB_PATH="/var/packages/${PACKAGE_NAME}/var"
+DB_FILE="${DB_PATH}/devices.db"
+
+echo "Starting ${PACKAGE_NAME} post-installation script..." > ${LOG_FILE}
+${PIP_BIN} install --no-python-version-warning -r ${REQUIREMENTS_FILE} >> ${LOG_FILE} 2>&1
+mkdir -p ${DB_PATH}
+touch ${DB_FILE}
+chown -R sc-${PACKAGE_NAME}:sc-${PACKAGE_NAME} ${DB_PATH}
+${PYTHON_BIN} ${SCANNER_SCRIPT} --init-db >> ${LOG_FILE} 2>&1
+/usr/syno/bin/synoschedtask --add name="${PACKAGE_NAME}_Scan" script="${PYTHON_BIN} ${SCANNER_SCRIPT}" minute="*/10" state="enabled" user="root" >> ${LOG_FILE} 2>&1
+echo "Post-installation script finished." >> ${LOG_FILE}
+exit 0
