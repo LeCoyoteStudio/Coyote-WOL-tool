@@ -24,10 +24,13 @@ jobs:
           mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
           cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
 
-      # NOUVELLE ÉTAPE : Correction des fins de ligne pour garantir la compatibilité
-      - name: Fix line endings
+      # NOUVELLE ÉTAPE (AMÉLIORÉE) : Correction des fins de ligne pour garantir la compatibilité
+      - name: Fix line endings for all text files
         run: |
-          find /tmp/spksrc/spk/CoyoteWOLtool -type f -name "*" -exec sed -i 's/\r$//' {} +
+          echo "Fixing line endings in spksrc build system..."
+          find /tmp/spksrc/mk -type f -name "*.mk" -exec sed -i 's/\r$//' {} +
+          echo "Fixing line endings in CoyoteWOLtool project files..."
+          find /tmp/spksrc/spk/CoyoteWOLtool -type f -not -name "*.png" -exec sed -i 's/\r$//' {} +
           
       # Étape 4: Lancer la compilation
       - name: Build the package
