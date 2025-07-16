@@ -24,6 +24,11 @@ jobs:
           mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
           cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
 
+      # NOUVELLE ÉTAPE : Correction des fins de ligne pour garantir la compatibilité
+      - name: Fix line endings
+        run: |
+          find /tmp/spksrc/spk/CoyoteWOLtool -type f -name "*" -exec sed -i 's/\r$//' {} +
+          
       # Étape 4: Lancer la compilation
       - name: Build the package
         run: make -C /tmp/spksrc/spk/CoyoteWOLtool arch-noarch
@@ -34,4 +39,3 @@ jobs:
         with:
           name: CoyoteWOLtool-spk
           path: /tmp/spksrc/packages/*.spk
-
