@@ -7,19 +7,16 @@ MAINTAINER = Coyote Studio
 DESCRIPTION = Scanne le réseau et permet de réveiller à distance les appareils via Wake-on-LAN.
 STARTABLE = yes
 DISPLAY_NAME = Coyote WOL tool
-CHANGELOG = "Ajout d'une règle d'installation explicite dans le Makefile pour corriger la compilation."
+CHANGELOG = "Correction de la règle d'installation dans le Makefile pour créer le dossier 'target' correctement."
 
 HOMEPAGE = https://coyote.studio
 LICENSE = MIT
 
-# Règle d'installation personnalisée pour copier les fichiers du projet au bon endroit
+# Règle d'installation pour copier les fichiers de l'application dans le dossier 'target'
+# qui sera déployé sur le NAS. Le reste (conf, scripts) est géré automatiquement.
 install_target:
-	@mkdir -p $(STAGING_DIR)/src
-	@cp -a src/* $(STAGING_DIR)/src/
-	@mkdir -p $(STAGING_DIR)/conf
-	@cp -a conf/* $(STAGING_DIR)/conf/
-	@mkdir -p $(STAGING_DIR)/scripts
-	@cp -a scripts/* $(STAGING_DIR)/scripts/
+	@mkdir -p $(STAGING_DIR)/target
+	@cp -a src/* $(STAGING_DIR)/target/
 
 # Inclusion des règles de compilation de spksrc
 include ../../mk/spksrc.spk.mk
