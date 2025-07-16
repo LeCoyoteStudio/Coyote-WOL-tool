@@ -30,7 +30,7 @@ jobs:
 
       # Étape 5: Téléverser le paquet .spk compilé comme un "artefact"
       - name: Upload SPK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: CoyoteWOLtool-spk
           path: /tmp/spksrc/packages/*.spk
