@@ -3,10 +3,8 @@ name: Build CoyoteWOLtool SPK
 
 # Définit les événements qui déclenchent l'exécution de ce workflow.
 on:
-  # Se déclenche à chaque 'push' sur la branche 'main'.
-  push:
-    branches: [ "main" ]
-  # Permet de lancer manuellement le workflow depuis l'interface GitHub.
+  # Le workflow ne se déclenche plus automatiquement.
+  # Il ne peut être lancé que manuellement depuis l'interface GitHub.
   workflow_dispatch:
 
 jobs:
@@ -25,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/spksrc
-          # CORRECTION : La clé de cache est changée en 'v3' pour forcer une mise à jour.
+          # La clé de cache est 'v3' pour forcer une mise à jour.
           key: ${{ runner.os }}-spksrc-v3
 
       # Étape 3 : Clonage de spksrc si non disponible dans le cache
