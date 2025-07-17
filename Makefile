@@ -4,7 +4,7 @@
 # --- Variables de base du paquet ---
 SPK_NAME = CoyoteWOLtool
 SPK_VERS = 0.1.7
-SPK_REV = 1
+SPK_REV = 2 # Incrémentation de la révision pour ce correctif
 SPK_ICON = images/CoyoteWOLtool-72.png
 
 # --- Métadonnées du paquet ---
@@ -12,7 +12,7 @@ MAINTAINER = Coyote Studio
 DESCRIPTION = Scanne le réseau et permet de réveiller à distance les appareils via Wake-on-LAN.
 STARTABLE = yes
 DISPLAY_NAME = Coyote WOL tool
-CHANGELOG = "Correction du chemin de copie dans le Makefile pour résoudre l'erreur de build."
+CHANGELOG = "Correction de la structure des répertoires pour la compilation."
 
 # --- Liens et licence ---
 HOMEPAGE = https://coyote.studio
@@ -26,9 +26,9 @@ install_target:
 	@echo "Copying application source files to installation directory..."
 	# Crée le répertoire 'target' dans la destination d'installation.
 	@mkdir -p $(INSTALL_DIR)/target
-	# Copie tout le contenu du dossier 'src' (qui est au même niveau que ce Makefile)
-	# vers le dossier 'target' de destination. C'est le chemin corrigé.
-	@cp -a src/* $(INSTALL_DIR)/target/
+	# Copie l'intégralité du dossier 'src' dans le dossier 'target'.
+	# Cela créera la structure /target/src/ qui est attendue par les scripts.
+	@cp -a src $(INSTALL_DIR)/target/
 
 # --- Inclusion des règles de compilation standards ---
 # Cette ligne est cruciale. Elle importe toutes les règles de compilation standards
