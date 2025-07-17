@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coyote WOL tool</title>
+    <!-- Utilise Jinja2 pour générer l'URL des fichiers statiques -->
     <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <!-- Conteneur principal de l'application -->
     <div class="container">
         <div id="mainPage">
             <header>
@@ -15,7 +18,9 @@
                 <h1 data-i18n="my_devices">Mes Appareils</h1>
                 <div class="header-controls">
                     <select id="languageSelector" title="Changer de langue"></select>
-                    <button id="refreshButton" title="Rafraîchir">&#x21bb;</button>
+                    <button id="refreshButton" title="Rafraîchir la liste" aria-label="Rafraîchir la liste">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
                 </div>
             </header>
             
@@ -24,158 +29,290 @@
             <div id="loading" class="full-center"><p data-i18n="loading">Chargement des appareils...</p></div>
             <div id="error" class="full-center hidden"><p id="errorMessage"></p></div>
         </div>
+        
+        <footer>
+            <p>Coyote WOL tool - by Coyote Studio</p>
+        </footer>
     </div>
 
+    <!-- Modale pour éditer un appareil (cachée par défaut) -->
+    <div id="editModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 data-i18n="edit_device_title">Éditer l'appareil</h2>
+            <form id="editForm">
+                <input type="hidden" id="editMac">
+                <div class="form-group">
+                    <label for="customName" data-i18n="custom_name_label">Nom personnalisé</label>
+                    <input type="text" id="customName" placeholder="ex: PC de bureau">
+                </div>
+                <div class="form-group-checkbox">
+                    <input type="checkbox" id="isFavorite">
+                    <label for="isFavorite" data-i18n="favorite_label">Marquer comme favori</label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelButton" data-i18n="cancel_button">Annuler</button>
+                    <button type="submit" id="saveButton" data-i18n="save_button">Sauvegarder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conteneur pour les notifications (toast) -->
+    <div id="notification-container"></div>
+
     <script>
-        // Le code JavaScript reste identique à la version précédente.
-        // Seule la source de l'image dans le HTML a changé.
         document.addEventListener('DOMContentLoaded', () => {
-            const dom = {
-                mainPage: document.getElementById('mainPage'),
-                refreshButton: document.getElementById('refreshButton'),
-                deviceListContainer: document.getElementById('deviceListContainer'),
-                loadingIndicator: document.getElementById('loading'),
-                errorContainer: document.getElementById('error'),
-                errorMessage: document.getElementById('errorMessage'),
-                languageSelector: document.getElementById('languageSelector'),
+            // Namespace pour organiser le code
+            const app = {
+                // --- Éléments du DOM ---
+                dom: {
+                    deviceListContainer: document.getElementById('deviceListContainer'),
+                    loadingIndicator: document.getElementById('loading'),
+                    errorContainer: document.getElementById('error'),
+                    errorMessage: document.getElementById('errorMessage'),
+                    languageSelector: document.getElementById('languageSelector'),
+                    refreshButton: document.getElementById('refreshButton'),
+                    editModal: {
+                        overlay: document.getElementById('editModal'),
+                        form: document.getElementById('editForm'),
+                        macInput: document.getElementById('editMac'),
+                        nameInput: document.getElementById('customName'),
+                        favoriteInput: document.getElementById('isFavorite'),
+                        cancelButton: document.getElementById('cancelButton'),
+                        saveButton: document.getElementById('saveButton'),
+                    },
+                    notificationContainer: document.getElementById('notification-container'),
+                },
+
+                // --- État de l'application ---
+                state: {
+                    currentLang: 'en',
+                    devices: [],
+                },
+
+                // --- Traductions ---
+                i18n: {
+                    translations: {
+                        en: { my_devices: "My Devices", loading: "Loading devices...", no_devices: "No devices found.", wake_device_title: "Wake up device", packet_sent_notif: "Wake-up packet sent to {mac}.", error_notif: "Error: {message}", edit_device_title: "Edit Device", custom_name_label: "Custom Name", favorite_label: "Mark as favorite", cancel_button: "Cancel", save_button: "Save", update_success_notif: "Device updated successfully." },
+                        fr: { my_devices: "Mes Appareils", loading: "Chargement des appareils...", no_devices: "Aucun appareil trouvé.", wake_device_title: "Réveiller l'appareil", packet_sent_notif: "Paquet de réveil envoyé à {mac}.", error_notif: "Erreur : {message}", edit_device_title: "Éditer l'appareil", custom_name_label: "Nom personnalisé", favorite_label: "Marquer comme favori", cancel_button: "Annuler", save_button: "Sauvegarder", update_success_notif: "Appareil mis à jour avec succès." },
+                    },
+                    langNames: { en: "English", fr: "Français" },
+                    
+                    // Fonction de traduction
+                    t(key, replacements = {}) {
+                        let text = this.translations[app.state.currentLang]?.[key] || this.translations.en[key] || key;
+                        for (const [k, v] of Object.entries(replacements)) {
+                            text = text.replace(`{${k}}`, v);
+                        }
+                        return text;
+                    },
+
+                    // Applique la langue à toute l'interface
+                    setLanguage(lang) {
+                        app.state.currentLang = lang;
+                        localStorage.setItem('coyoteWolLanguage', lang);
+                        document.documentElement.lang = lang;
+                        document.querySelectorAll('[data-i18n]').forEach(el => {
+                            el.textContent = this.t(el.dataset.i18n);
+                        });
+                        // Mettre à jour les titres dynamiques
+                        app.dom.refreshButton.title = this.t('wake_device_title');
+                        app.dom.refreshButton.setAttribute('aria-label', this.t('wake_device_title'));
+                    }
+                },
+
+                // --- API (Communication avec le backend) ---
+                api: {
+                    async call(endpoint, options = {}) {
+                        const url = new URL(endpoint, window.location.origin);
+                        url.searchParams.append('lang', app.state.currentLang);
+                        const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...options.headers };
+                        
+                        try {
+                            const response = await fetch(url.toString(), { ...options, headers });
+                            const data = await response.json();
+                            if (!response.ok) {
+                                throw new Error(data.message || data.error || "Communication error");
+                            }
+                            return data;
+                        } catch (error) {
+                            console.error(`API call to ${endpoint} failed:`, error);
+                            throw error;
+                        }
+                    },
+                    getDevices() { return this.call('/api/devices'); },
+                    pingDevice(ip) { return this.call(`/api/ping/${ip}`); },
+                    wakeupDevice(mac) { return this.call('/api/wakeup', { method: 'POST', body: JSON.stringify({ mac }) }); },
+                    updateDevice(mac, data) { return this.call(`/api/device/${mac}`, { method: 'PUT', body: JSON.stringify(data) }); },
+                },
+
+                // --- UI (Mise à jour de l'interface) ---
+                ui: {
+                    // Affiche une notification
+                    showNotification(message, type = 'success') {
+                        const notif = document.createElement('div');
+                        notif.className = `notification ${type}`;
+                        notif.textContent = message;
+                        app.dom.notificationContainer.appendChild(notif);
+                        setTimeout(() => {
+                            notif.classList.add('fade-out');
+                            setTimeout(() => notif.remove(), 500);
+                        }, 4000);
+                    },
+
+                    // Affiche ou cache la modale d'édition
+                    toggleEditModal(show = false, device = null) {
+                        if (show && device) {
+                            app.dom.editModal.macInput.value = device.mac;
+                            app.dom.editModal.nameInput.value = device.custom_name || '';
+                            app.dom.editModal.favoriteInput.checked = device.is_favorite === 1;
+                            app.dom.editModal.overlay.classList.remove('hidden');
+                        } else {
+                            app.dom.editModal.overlay.classList.add('hidden');
+                            app.dom.editModal.form.reset();
+                        }
+                    },
+
+                    // Crée la carte HTML pour un appareil
+                    createDeviceCard(device) {
+                        const displayName = device.custom_name || device.hostname || 'Unknown Device';
+                        const card = document.createElement('div');
+                        card.className = `device-card ${device.is_favorite ? 'favorite' : ''}`;
+                        card.dataset.mac = device.mac;
+                        
+                        card.innerHTML = `
+                            <div class="status-container" id="status-container-${device.mac.replace(/:/g, '')}">
+                                <div class="status-dot pending"></div>
+                            </div>
+                            <div class="device-info">
+                                <p class="name" title="${displayName}">${displayName}</p>
+                                <p class="mac">${device.mac}</p>
+                            </div>
+                            <div class="device-actions">
+                                <button class="action-button favorite-button" title="Marquer comme favori" aria-label="Marquer comme favori">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                </button>
+                                <button class="action-button wake-button" title="${app.i18n.t('wake_device_title')}" aria-label="${app.i18n.t('wake_device_title')}">
+                                    <svg viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
+                                </button>
+                            </div>
+                        `;
+                        return card;
+                    },
+
+                    // Rafraîchit la liste complète des appareils
+                    async renderDevices() {
+                        app.dom.loadingIndicator.style.display = 'block';
+                        app.dom.errorContainer.classList.add('hidden');
+                        app.dom.deviceListContainer.innerHTML = '';
+                        
+                        try {
+                            app.state.devices = await app.api.getDevices();
+                            if (app.state.devices.length === 0) {
+                                app.dom.deviceListContainer.innerHTML = `<div class="full-center"><p>${app.i18n.t('no_devices')}</p></div>`;
+                            } else {
+                                app.state.devices.forEach(device => {
+                                    const card = this.createDeviceCard(device);
+                                    app.dom.deviceListContainer.appendChild(card);
+                                    app.api.pingDevice(device.ip).then(result => {
+                                        const statusDot = card.querySelector('.status-dot');
+                                        if (statusDot) statusDot.className = `status-dot ${result.status}`;
+                                    });
+                                });
+                            }
+                        } catch (error) {
+                            app.dom.errorContainer.classList.remove('hidden');
+                            app.dom.errorMessage.textContent = error.message;
+                        } finally {
+                            app.dom.loadingIndicator.style.display = 'none';
+                        }
+                    }
+                },
+
+                // --- Gestion des événements ---
+                events: {
+                    init() {
+                        app.dom.refreshButton.addEventListener('click', () => app.ui.renderDevices());
+                        app.dom.languageSelector.addEventListener('change', (e) => {
+                            app.i18n.setLanguage(e.target.value);
+                            app.ui.renderDevices();
+                        });
+
+                        // Clics sur la liste des appareils (délégation d'événements)
+                        app.dom.deviceListContainer.addEventListener('click', this.handleDeviceListClick);
+                        
+                        // Événements de la modale
+                        app.dom.editModal.cancelButton.addEventListener('click', () => app.ui.toggleEditModal(false));
+                        app.dom.editModal.overlay.addEventListener('click', (e) => {
+                            if (e.target === app.dom.editModal.overlay) app.ui.toggleEditModal(false);
+                        });
+                        app.dom.editModal.form.addEventListener('submit', this.handleSave);
+                    },
+
+                    async handleDeviceListClick(event) {
+                        const target = event.target;
+                        const card = target.closest('.device-card');
+                        if (!card) return;
+                        
+                        const mac = card.dataset.mac;
+
+                        if (target.closest('.wake-button')) {
+                            try {
+                                const result = await app.api.wakeupDevice(mac);
+                                app.ui.showNotification(result.message, 'success');
+                                setTimeout(() => app.ui.renderDevices(), 5000); // Refresh after 5s
+                            } catch (e) {
+                                app.ui.showNotification(e.message, 'error');
+                            }
+                        } else if (target.closest('.name')) {
+                            const device = app.state.devices.find(d => d.mac === mac);
+                            if (device) app.ui.toggleEditModal(true, device);
+                        }
+                    },
+
+                    async handleSave(event) {
+                        event.preventDefault();
+                        const mac = app.dom.editModal.macInput.value;
+                        const data = {
+                            custom_name: app.dom.editModal.nameInput.value,
+                            is_favorite: app.dom.editModal.favoriteInput.checked ? 1 : 0,
+                        };
+                        
+                        try {
+                            const result = await app.api.updateDevice(mac, data);
+                            app.ui.showNotification(result.message, 'success');
+                            app.ui.toggleEditModal(false);
+                            app.ui.renderDevices();
+                        } catch (e) {
+                            app.ui.showNotification(e.message, 'error');
+                        }
+                    }
+                },
+
+                // --- Initialisation de l'application ---
+                init() {
+                    // Peuple le sélecteur de langue
+                    Object.entries(app.i18n.langNames).forEach(([code, name]) => {
+                        const option = document.createElement('option');
+                        option.value = code;
+                        option.textContent = name;
+                        app.dom.languageSelector.appendChild(option);
+                    });
+
+                    // Définit la langue initiale
+                    const savedLang = localStorage.getItem('coyoteWolLanguage');
+                    const browserLang = navigator.language.split('-')[0];
+                    const initialLang = savedLang || (app.i18n.translations[browserLang] ? browserLang : 'en');
+                    app.dom.languageSelector.value = initialLang;
+                    
+                    app.i18n.setLanguage(initialLang);
+                    app.events.init();
+                    app.ui.renderDevices();
+                }
             };
 
-            const translations = {
-                en: { my_devices: "My Devices", loading: "Loading devices...", no_devices: "No devices found.", wake_device_title: "Wake up device", packet_sent_alert: "Wake-up packet sent to {mac}.", error_alert: "Error: {message}" },
-                fr: { my_devices: "Mes Appareils", loading: "Chargement des appareils...", no_devices: "Aucun appareil trouvé.", wake_device_title: "Réveiller l'appareil", packet_sent_alert: "Paquet de réveil envoyé à {mac}.", error_alert: "Erreur : {message}" },
-                es: { my_devices: "Mis Dispositivos", loading: "Cargando dispositivos...", no_devices: "No se encontraron dispositivos.", wake_device_title: "Despertar dispositivo", packet_sent_alert: "Paquete de despertar enviado a {mac}.", error_alert: "Error: {message}" },
-                de: { my_devices: "Meine Geräte", loading: "Geräte werden geladen...", no_devices: "Keine Geräte gefunden.", wake_device_title: "Gerät aufwecken", packet_sent_alert: "Aufweck-Paket an {mac} gesendet.", error_alert: "Fehler: {message}" }
-            };
-            const langNames = { en: "English", fr: "Français", es: "Español", de: "Deutsch" };
-            let currentLang = 'en';
-
-            function _(key, replacements = {}) {
-                let text = translations[currentLang]?.[key] || translations.en[key] || key;
-                for (const [k, v] of Object.entries(replacements)) {
-                    text = text.replace(`{${k}}`, v);
-                }
-                return text;
-            }
-
-            function setLanguage(lang) {
-                currentLang = lang;
-                localStorage.setItem('coyoteWolLanguage', lang);
-                document.documentElement.lang = lang;
-                document.querySelectorAll('[data-i18n]').forEach(el => {
-                    el.textContent = _(el.dataset.i18n);
-                });
-                dom.refreshButton.title = _('wake_device_title');
-            }
-
-            async function apiCall(endpoint, options = {}) {
-                const lang = localStorage.getItem('coyoteWolLanguage') || 'en';
-                const url = new URL(endpoint, window.location.origin);
-                url.searchParams.append('lang', lang);
-                const headers = { 'Cache-Control': 'no-cache', ...options.headers };
-                const finalOptions = { ...options, headers };
-                const response = await fetch(url.toString(), finalOptions);
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || "Communication error.");
-                }
-                return response.json();
-            }
-
-            function renderDeviceCard(device) {
-                const displayName = device.custom_name || device.hostname;
-                const isFavorite = device.is_favorite === 1;
-                const card = document.createElement('div');
-                card.className = `device-card ${isFavorite ? 'favorite' : ''}`;
-                card.innerHTML = `
-                    <div class="status-container" id="status-container-${device.mac.replace(/:/g, '')}">
-                        <div class="status-dot pending"></div>
-                    </div>
-                    <div class="device-info">
-                        <p class="name" title="${displayName}">${displayName}</p>
-                        <p class="mac">${device.mac}</p>
-                    </div>
-                    <button data-mac="${device.mac}" class="wake-button" title="${_('wake_device_title')}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
-                    </button>
-                `;
-                return card;
-            }
-
-            async function checkDeviceStatus(ip, mac) {
-                const statusContainer = document.getElementById(`status-container-${mac.replace(/:/g, '')}`);
-                if (!statusContainer) return;
-                const statusDot = statusContainer.querySelector('.status-dot');
-                try {
-                    const result = await apiCall(`/api/ping/${ip}`);
-                    statusDot.className = `status-dot ${result.status}`;
-                } catch (e) {
-                    statusDot.className = 'status-dot error';
-                }
-            }
-
-            async function fetchAndRender() {
-                dom.loadingIndicator.style.display = 'block';
-                dom.errorContainer.style.display = 'none';
-                dom.deviceListContainer.innerHTML = '';
-                try {
-                    const devices = await apiCall('/api/devices');
-                    dom.loadingIndicator.style.display = 'none';
-                    if (devices.length === 0) {
-                        dom.deviceListContainer.innerHTML = `<div class="full-center"><p>${_('no_devices')}</p></div>`;
-                    } else {
-                        devices.forEach(device => {
-                            const card = renderDeviceCard(device);
-                            dom.deviceListContainer.appendChild(card);
-                            checkDeviceStatus(device.ip, device.mac);
-                        });
-                    }
-                } catch (error) {
-                    dom.loadingIndicator.style.display = 'none';
-                    dom.errorContainer.style.display = 'block';
-                    dom.errorMessage.textContent = error.message;
-                }
-            }
-            
-            dom.deviceListContainer.addEventListener('click', async (event) => {
-                const wakeButton = event.target.closest('.wake-button');
-                if (wakeButton) {
-                    const mac = wakeButton.dataset.mac;
-                    try {
-                        const result = await apiCall('/api/wakeup', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ mac }),
-                        });
-                        alert(_('packet_sent_alert', { mac }));
-                        setTimeout(fetchAndRender, 5000);
-                    } catch (e) {
-                        alert(_('error_alert', { message: e.message }));
-                    }
-                }
-            });
-
-            dom.refreshButton.addEventListener('click', fetchAndRender);
-            dom.languageSelector.addEventListener('change', (e) => {
-                setLanguage(e.target.value);
-                fetchAndRender();
-            });
-
-            function init() {
-                Object.entries(langNames).forEach(([code, name]) => {
-                    const option = document.createElement('option');
-                    option.value = code;
-                    option.textContent = name;
-                    dom.languageSelector.appendChild(option);
-                });
-                const savedLang = localStorage.getItem('coyoteWolLanguage');
-                const browserLang = navigator.language.split('-')[0];
-                const initialLang = savedLang || (translations[browserLang] ? browserLang : 'en');
-                dom.languageSelector.value = initialLang;
-                setLanguage(initialLang);
-                fetchAndRender();
-            }
-
-            init();
+            // Démarrage de l'application
+            app.init();
         });
     </script>
 </body>
