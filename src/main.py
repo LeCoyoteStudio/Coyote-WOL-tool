@@ -40,7 +40,9 @@ logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
 
 # --- Initialisation de l'application Flask ---
-app = Flask(__name__, template_folder='../templates', static_folder='../static')
+# CORRECTION : Les chemins vers les templates et les fichiers statiques sont maintenant
+# relatifs au script main.py, car ils sont dans le même dossier 'src'.
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # --- Internationalisation (i18n) ---
 # Un système simple pour les traductions.
