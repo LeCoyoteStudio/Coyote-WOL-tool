@@ -1,45 +1,81 @@
 #!/bin/sh
 
-# Script pour démarrer, arrêter et vérifier le statut du serveur Python Flask.
+# ==============================================================================
+# Script de contrôle (Démarrer/Arrêter/Statut) pour CoyoteWOLtool
+#
+# Ce script est appelé par DSM pour gérer le cycle de vie du service principal,
+# qui est le serveur web Flask.
+# ==============================================================================
 
-PYTHON="/usr/bin/python3"
-PID_FILE="/var/run/coyote-wol-tool.pid"
-LOG_FILE="/var/log/coyote-wol-tool.log"
-APP_PATH="/var/packages/CoyoteWOLtool/target/src/main.py"
+# --- Variables de configuration ---
+PACKAGE_NAME="CoyoteWOLtool"
+PACKAGE_DIR="/var/packages/${PACKAGE_NAME}"
+APP_DIR="${PACKAGE_DIR}/target"
+PYTHON_BIN="/usr/bin/python3"
+# Le script principal de l'application web.
+API_SCRIPT="${APP_DIR}/src/main.py"
+# Fichier pour stocker l'ID du processus (PID) du serveur web.
+PID_FILE="${PACKAGE_DIR}/var/${PACKAGE_NAME}.pid"
+# Fichier de log principal pour l'application.
+LOG_FILE="/var/log/${PACKAGE_NAME}.log"
+# L'utilisateur système dédié créé par DSM pour ce paquet.
+RUN_AS_USER="sc-${PACKAGE_NAME}"
+
+# --- Fonctions de contrôle ---
 
 start_daemon() {
-    echo "Starting Coyote WOL tool..." >> ${LOG_FILE}
-    # Démarrer le serveur en arrière-plan
-    ${PYTHON} ${APP_PATH} >> ${LOG_FILE} 2>&1 &
-    # Récupérer et stocker le PID du processus
-    echo $! > ${PID_FILE}
+    echo "Attempting to start ${PACKAGE_NAME} API server..." >> ${LOG_FILE}
+    # 'start-stop-daemon' est un utilitaire plus robuste que de lancer le processus en arrière-plan avec '&'.
+    # Il gère la création du PID file, le changement d'utilisateur et le lancement en arrière-plan.
+    start-stop-daemon --start --quiet --background \
+        --chuid ${RUN_AS_USER} \
+        --exec ${PYTHON_BIN} -- ${API_SCRIPT} \
+        --make-pidfile --pidfile ${PID_FILE}
+    
+    # Attendre un court instant et vérifier si le processus a bien démarré.
+    sleep 2
+    if [ -f ${PID_FILE} ] && ps -p $(cat ${PID_FILE}) > /dev/null; then
+        echo "Server started successfully with PID $(cat ${PID_FILE})." >> ${LOG_FILE}
+    else
+        echo "ERROR: Failed to start the server. Check logs for details." >> ${LOG_FILE}
+        rm -f ${PID_FILE}
+        exit 1
+    fi
 }
 
 stop_daemon() {
-    if [ -f ${PID_FILE} ]; then
-        PID=$(cat ${PID_FILE})
-        echo "Stopping Coyote WOL tool (PID: ${PID})..." >> ${LOG_FILE}
-        kill ${PID}
-        rm -f ${PID_FILE}
+    echo "Attempting to stop ${PACKAGE_NAME} API server..." >> ${LOG_FILE}
+    # 'start-stop-daemon' gère proprement l'arrêt du processus en se basant sur le PID file.
+    start-stop-daemon --stop --quiet --pidfile ${PID_FILE} --retry 5
+    
+    # Vérifier si le PID file a bien été supprimé.
+    if [ ! -f ${PID_FILE} ]; then
+        echo "Server stopped successfully." >> ${LOG_FILE}
     else
-        echo "Coyote WOL tool not running." >> ${LOG_FILE}
+        echo "Warning: Server may not have stopped correctly." >> ${LOG_FILE}
     fi
 }
 
 daemon_status() {
     if [ -f ${PID_FILE} ]; then
         PID=$(cat ${PID_FILE})
+        # Vérifie si un processus avec ce PID est actuellement en cours d'exécution.
         if ps -p ${PID} > /dev/null; then
-            echo "Coyote WOL tool is running."
+            echo "${PACKAGE_NAME} is running with PID: ${PID}"
+            exit 0 # Code de sortie pour "en cours d'exécution"
         else
-            echo "Coyote WOL tool is not running, but PID file exists. Cleaning up."
+            echo "${PACKAGE_NAME} is not running, but a stale PID file exists. Cleaning up."
             rm -f ${PID_FILE}
+            exit 1 # Code de sortie pour "arrêté"
         fi
     else
-        echo "Coyote WOL tool is not running."
+        echo "${PACKAGE_NAME} is not running."
+        exit 3 # Code de sortie pour "non exécuté"
     fi
 }
 
+# --- Logique principale du script ---
+# Gère les arguments passés au script (start, stop, status).
 case $1 in
     start)
         start_daemon
@@ -51,6 +87,7 @@ case $1 in
         daemon_status
         ;;
     *)
+        # Affiche un message d'aide si l'argument est invalide.
         echo "Usage: $0 {start|stop|status}"
         exit 1
         ;;
