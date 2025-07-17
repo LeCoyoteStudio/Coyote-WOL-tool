@@ -2,45 +2,26 @@
 
 # ==============================================================================
 # Script de post-installation pour CoyoteWOLtool
-#
-# Ce script est exécuté par le système DSM après l'installation du paquet.
-# Rôles principaux :
-# 1. Installer les dépendances Python requises.
-# 2. Créer la structure de répertoires et la base de données.
-# 3. Initialiser la base de données.
-# 4. Configurer la tâche planifiée pour le scan réseau.
-# 5. Définir les permissions correctes pour les fichiers et dossiers.
 # ==============================================================================
 
 # --- Variables de configuration ---
-# Nom du paquet, doit correspondre au fichier INFO.
 PACKAGE_NAME="CoyoteWOLtool"
-# Le répertoire d'installation réel du paquet sur le NAS.
+# CORRECTION : Le chemin pointe maintenant directement vers le dossier du paquet,
+# car le sous-dossier 'target' a été supprimé pour simplifier la structure.
 PACKAGE_DIR="/var/packages/${PACKAGE_NAME}"
-# Répertoire cible contenant les sources de l'application.
-APP_DIR="${PACKAGE_DIR}/target"
-# Chemin vers l'exécutable Python 3 de Synology.
 PYTHON_BIN="/usr/bin/python3"
-# Chemin vers le gestionnaire de paquets pip.
 PIP_BIN="/usr/bin/pip3"
-# Fichier listant les dépendances Python.
-REQUIREMENTS_FILE="${APP_DIR}/src/requirements.txt"
-# Script du scanner réseau.
-SCANNER_SCRIPT="${APP_DIR}/src/scanner.py"
-# Répertoire pour les données persistantes (base de données).
+REQUIREMENTS_FILE="${PACKAGE_DIR}/src/requirements.txt"
+SCANNER_SCRIPT="${PACKAGE_DIR}/src/scanner.py"
 VAR_DIR="${PACKAGE_DIR}/var"
-# Fichier de la base de données SQLite.
 DB_FILE="${VAR_DIR}/devices.db"
-# Fichier de log pour le suivi de l'installation.
 LOG_FILE="/var/log/${PACKAGE_NAME}.log"
 
 # --- Début du script ---
-
-# Redirige toute la sortie (stdout et stderr) vers le fichier de log pour un débogage facile.
 exec > ${LOG_FILE} 2>&1
 
 echo "=================================================="
-echo "Starting ${PACKAGE_NAME} post-installation script"
+echo "Starting ${PACKAGE_NAME} post-installation script (v2)"
 echo "Date: $(date)"
 echo "=================================================="
 
@@ -64,8 +45,6 @@ fi
 touch ${DB_FILE}
 
 # Étape 3: Définition des permissions
-# L'utilisateur 'sc-CoyoteWOLtool' est créé par DSM pour le paquet.
-# Il est crucial que cet utilisateur puisse écrire dans son répertoire de données.
 echo "[STEP 3/5] Setting ownership for data directory..."
 if chown -R sc-${PACKAGE_NAME}:sc-${PACKAGE_NAME} ${VAR_DIR}; then
     echo "Ownership set successfully for ${VAR_DIR}."
@@ -75,7 +54,6 @@ else
 fi
 
 # Étape 4: Initialisation de la base de données
-# Exécute le scanner une première fois pour créer le schéma de la table.
 echo "[STEP 4/5] Initializing the database schema..."
 if ${PYTHON_BIN} ${SCANNER_SCRIPT} --init-db; then
     echo "Database initialized successfully."
@@ -87,18 +65,14 @@ fi
 # Étape 5: Création de la tâche planifiée pour le scan réseau
 TASK_NAME="${PACKAGE_NAME}_Scan"
 echo "[STEP 5/5] Creating scheduled task '${TASK_NAME}'..."
-# Cette tâche exécutera le script de scan toutes les 10 minutes en tant que 'root'.
-# 'root' est souvent nécessaire pour que scapy puisse scanner le réseau correctement.
 if /usr/syno/bin/synoschedtask --add name="${TASK_NAME}" script="${PYTHON_BIN} ${SCANNER_SCRIPT}" minute="*/10" state="enabled" user="root"; then
     echo "Scheduled task created successfully to run every 10 minutes."
 else
     echo "ERROR: Failed to create scheduled task."
-    # Ne pas retourner d'erreur ici, l'application principale peut fonctionner sans le scan automatique.
 fi
 
 echo "=================================================="
 echo "Post-installation script finished successfully."
 echo "=================================================="
 
-# Le script doit se terminer avec un code de sortie 0 en cas de succès.
 exit 0
