@@ -25,8 +25,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/spksrc
-          # CORRECTION : La clé de cache est changée en 'v2' pour forcer une mise à jour.
-          key: ${{ runner.os }}-spksrc-v2
+          # CORRECTION : La clé de cache est changée en 'v3' pour forcer une mise à jour.
+          key: ${{ runner.os }}-spksrc-v3
 
       # Étape 3 : Clonage de spksrc si non disponible dans le cache
       - name: Clone spksrc repository
