@@ -1,35 +1,30 @@
-{
-  "app": {
-    "CoyoteWOLtool.App": {
-      "text": "Coyote WOL tool",
-      "icon": "images/CoyoteWOLtool-72.png",
-      "type": "url",
-      "url": "/webman/3rdparty/CoyoteWOLtool/"
-    }
-  },
-  "rules": [
-    {
-      "name": "SYNO.SDS.AdminCenter.Application.ApplicationPortal.Application",
-      "priv": {
-        "owner": ["administrators", "users"],
-        "min_version": "7.0"
-      }
-    },
-    {
-      "name": "SYNO.SDS.AdminCenter.Application.ApplicationPortal.Profile",
-      "priv": {
-        "owner": ["administrators", "users"],
-        "min_version": "7.0"
-      }
-    },
-    {
-      "name": "SYNO.SDS.AdminCenter.ControlPanel.Security.SecurityScan",
-      "priv": {
-        "owner": ["administrators"],
-        "min_version": "7.0"
-      }
-    }
-  ],
-  "sso_url": "/webman/3rdparty/CoyoteWOLtool/",
-  "url": "/webman/3rdparty/CoyoteWOLtool/"
-}
+# --- Métadonnées principales du paquet ---
+# Ce sont les informations affichées dans le Centre de Paquets.
+
+package="CoyoteWOLtool"
+version="0.1.7"
+arch="noarch"
+maintainer="Coyote Studio"
+maintainer_url="https://coyote.studio"
+description="Scanne le réseau local pour découvrir les appareils et les réveiller à distance via Wake-on-LAN (WOL). Fournit une interface web simple et un historique des appareils."
+
+# --- Scripts d'installation et de contrôle ---
+# Définit les scripts qui seront exécutés à différentes étapes du cycle de vie du paquet.
+[scripts]
+start-stop-status="scripts/start-stop-status"
+postinst="scripts/postinst"
+postuninst="scripts/postuninst"
+
+# --- Intégration à l'interface utilisateur de DSM ---
+# Configure comment l'application apparaît dans l'interface de Synology.
+[ui]
+app="CoyoteWOLtool.App"
+type="url"
+url="/webman/3rdparty/CoyoteWOLtool/"
+title="Coyote WOL tool"
+description="Outil Wake-on-LAN"
+icon="images/CoyoteWOLtool-72.png"
+
+# La section [application] a été supprimée. Nos scripts de contrôle gèrent déjà
+# le lancement du serveur Python, ce qui rend cette section redondante et
+# évite les conflits potentiels avec le système de compilation spksrc.
