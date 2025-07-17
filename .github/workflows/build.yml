@@ -1,36 +1,70 @@
+# Nom du workflow qui apparaîtra dans l'onglet "Actions" de GitHub.
 name: Build CoyoteWOLtool SPK
 
+# Définit les événements qui déclenchent l'exécution de ce workflow.
 on:
+  # Se déclenche à chaque 'push' sur la branche 'main'.
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+  # Permet de lancer manuellement le workflow depuis l'interface GitHub ("Actions" -> "Build CoyoteWOLtool SPK" -> "Run workflow").
   workflow_dispatch:
 
 jobs:
-  build:
+  # Un seul job dans ce workflow, nommé 'build-spk'.
+  build-spk:
+    # Le job s'exécutera sur une machine virtuelle hébergée par GitHub, utilisant la dernière version d'Ubuntu.
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1: Récupérer le code de votre projet
+      # Étape 1 : Récupération du code source
+      # L'action 'actions/checkout' télécharge le code de votre dépôt sur la machine virtuelle.
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Étape 2: Cloner l'environnement de compilation spksrc
-      - name: Clone spksrc
-        run: git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
+      # Étape 2 : Mise en cache de l'environnement de compilation spksrc
+      # Le but est d'éviter de télécharger spksrc à chaque exécution, ce qui accélère le processus.
+      - name: Cache spksrc directory
+        id: cache-spksrc
+        uses: actions/cache@v4
+        with:
+          # Le dossier à mettre en cache.
+          path: /tmp/spksrc
+          # Une clé unique pour identifier le cache. Si la clé change, le cache est recréé.
+          # On peut changer 'v1' en 'v2' pour forcer une mise à jour du cache.
+          key: ${{ runner.os }}-spksrc-v1
 
-      # Étape 3: Préparer les fichiers pour la compilation
+      # Étape 3 : Clonage de spksrc si non disponible dans le cache
+      # Cette étape ne s'exécute que si le cache de l'étape précédente n'a pas été trouvé.
+      - name: Clone spksrc repository
+        if: steps.cache-spksrc.outputs.cache-hit != 'true'
+        run: |
+          echo "spksrc not found in cache. Cloning repository..."
+          git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
+        
+      # Étape 4 : Préparation de l'environnement de compilation
+      # Copie les fichiers de notre projet dans le dossier attendu par spksrc.
       - name: Prepare build environment
         run: |
+          echo "Preparing spksrc environment..."
+          # Crée le répertoire de destination pour notre paquet.
           mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
+          # Copie tous les fichiers du projet dans le répertoire de compilation.
           cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
-          
-      # Étape 4: Lancer la compilation
+
+      # Étape 5 : Compilation du paquet
+      # Lance la commande 'make' pour construire le paquet .spk.
+      # L'architecture 'noarch' signifie que le paquet est indépendant du processeur (scripts, etc.).
       - name: Build the package
         run: make -C /tmp/spksrc/spk/CoyoteWOLtool arch-noarch
 
-      # Étape 5: Téléverser le paquet .spk compilé comme un "artefact"
+      # Étape 6 : Téléversement de l'artefact (le fichier .spk)
+      # Le fichier compilé est sauvegardé et peut être téléchargé depuis la page du workflow.
       - name: Upload SPK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CoyoteWOLtool-spk
-          path: /tmp/spksrc/packages/*.spk
+          # Nom de l'artefact qui sera visible sur GitHub.
+          name: CoyoteWOLtool-SPK-Package
+          # Chemin vers le fichier à téléverser. Le joker '*' gère les variations de version/révision.
+          path: /tmp/spksrc/packages/CoyoteWOLtool-*.spk
+          # Le fichier sera supprimé de GitHub après 30 jours pour économiser de l'espace.
+          retention-days: 30
