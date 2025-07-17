@@ -2,37 +2,27 @@
 
 # ==============================================================================
 # Script de contrôle (Démarrer/Arrêter/Statut) pour CoyoteWOLtool
-#
-# Ce script est appelé par DSM pour gérer le cycle de vie du service principal,
-# qui est le serveur web Flask.
 # ==============================================================================
 
 # --- Variables de configuration ---
 PACKAGE_NAME="CoyoteWOLtool"
+# CORRECTION : Le chemin pointe maintenant directement vers le dossier du paquet.
 PACKAGE_DIR="/var/packages/${PACKAGE_NAME}"
-APP_DIR="${PACKAGE_DIR}/target"
 PYTHON_BIN="/usr/bin/python3"
-# Le script principal de l'application web.
-API_SCRIPT="${APP_DIR}/src/main.py"
-# Fichier pour stocker l'ID du processus (PID) du serveur web.
+API_SCRIPT="${PACKAGE_DIR}/src/main.py"
 PID_FILE="${PACKAGE_DIR}/var/${PACKAGE_NAME}.pid"
-# Fichier de log principal pour l'application.
 LOG_FILE="/var/log/${PACKAGE_NAME}.log"
-# L'utilisateur système dédié créé par DSM pour ce paquet.
 RUN_AS_USER="sc-${PACKAGE_NAME}"
 
 # --- Fonctions de contrôle ---
 
 start_daemon() {
     echo "Attempting to start ${PACKAGE_NAME} API server..." >> ${LOG_FILE}
-    # 'start-stop-daemon' est un utilitaire plus robuste que de lancer le processus en arrière-plan avec '&'.
-    # Il gère la création du PID file, le changement d'utilisateur et le lancement en arrière-plan.
     start-stop-daemon --start --quiet --background \
         --chuid ${RUN_AS_USER} \
         --exec ${PYTHON_BIN} -- ${API_SCRIPT} \
         --make-pidfile --pidfile ${PID_FILE}
     
-    # Attendre un court instant et vérifier si le processus a bien démarré.
     sleep 2
     if [ -f ${PID_FILE} ] && ps -p $(cat ${PID_FILE}) > /dev/null; then
         echo "Server started successfully with PID $(cat ${PID_FILE})." >> ${LOG_FILE}
@@ -45,10 +35,8 @@ start_daemon() {
 
 stop_daemon() {
     echo "Attempting to stop ${PACKAGE_NAME} API server..." >> ${LOG_FILE}
-    # 'start-stop-daemon' gère proprement l'arrêt du processus en se basant sur le PID file.
     start-stop-daemon --stop --quiet --pidfile ${PID_FILE} --retry 5
     
-    # Vérifier si le PID file a bien été supprimé.
     if [ ! -f ${PID_FILE} ]; then
         echo "Server stopped successfully." >> ${LOG_FILE}
     else
@@ -59,23 +47,21 @@ stop_daemon() {
 daemon_status() {
     if [ -f ${PID_FILE} ]; then
         PID=$(cat ${PID_FILE})
-        # Vérifie si un processus avec ce PID est actuellement en cours d'exécution.
         if ps -p ${PID} > /dev/null; then
             echo "${PACKAGE_NAME} is running with PID: ${PID}"
-            exit 0 # Code de sortie pour "en cours d'exécution"
+            exit 0
         else
             echo "${PACKAGE_NAME} is not running, but a stale PID file exists. Cleaning up."
             rm -f ${PID_FILE}
-            exit 1 # Code de sortie pour "arrêté"
+            exit 1
         fi
     else
         echo "${PACKAGE_NAME} is not running."
-        exit 3 # Code de sortie pour "non exécuté"
+        exit 3
     fi
 }
 
 # --- Logique principale du script ---
-# Gère les arguments passés au script (start, stop, status).
 case $1 in
     start)
         start_daemon
@@ -87,7 +73,6 @@ case $1 in
         daemon_status
         ;;
     *)
-        # Affiche un message d'aide si l'argument est invalide.
         echo "Usage: $0 {start|stop|status}"
         exit 1
         ;;
