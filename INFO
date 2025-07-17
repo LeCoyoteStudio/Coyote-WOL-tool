@@ -1,59 +1,30 @@
 # --- Métadonnées principales du paquet ---
 # Ce sont les informations affichées dans le Centre de Paquets.
 
-# Le nom technique du paquet (sans espaces ni caractères spéciaux).
 package="CoyoteWOLtool"
-
-# Le numéro de version du paquet. Doit être mis à jour manuellement à chaque nouvelle version.
 version="0.1.7"
-
-# L'architecture cible. "noarch" signifie que le paquet est universel
-# et ne dépend pas d'un type de processeur spécifique (ex: x86, arm),
-# ce qui est parfait pour une application basée sur des scripts Python.
 arch="noarch"
-
-# Le nom du mainteneur ou du développeur.
 maintainer="Coyote Studio"
-
-# L'URL du site web du mainteneur.
 maintainer_url="https://coyote.studio"
-
-# Une description claire et concise de ce que fait le paquet.
 description="Scanne le réseau local pour découvrir les appareils et les réveiller à distance via Wake-on-LAN (WOL). Fournit une interface web simple et un historique des appareils."
 
 # --- Scripts d'installation et de contrôle ---
 # Définit les scripts qui seront exécutés à différentes étapes du cycle de vie du paquet.
 [scripts]
-# Script pour démarrer, arrêter et vérifier le statut du service.
 start-stop-status="scripts/start-stop-status"
-# Script exécuté juste après l'installation du paquet.
 postinst="scripts/postinst"
-# Script exécuté juste avant la désinstallation du paquet.
 postuninst="scripts/postuninst"
 
 # --- Intégration à l'interface utilisateur de DSM ---
 # Configure comment l'application apparaît dans l'interface de Synology.
 [ui]
-# Un identifiant unique pour l'application, qui doit correspondre à celui dans `conf/app.json`.
 app="CoyoteWOLtool.App"
-# Le type d'élément à ouvrir. "url" ouvre une page web.
 type="url"
-# L'URL relative qui sera ouverte. Le paquet doit servir une application web à cette adresse.
 url="/webman/3rdparty/CoyoteWOLtool/"
-# Le titre de l'application qui apparaît sous l'icône dans le menu principal de DSM.
 title="Coyote WOL tool"
-# Une courte description pour le titre de la fenêtre du navigateur.
 description="Outil Wake-on-LAN"
-# Le chemin vers l'icône de l'application (72x72 pixels est une bonne taille).
 icon="images/CoyoteWOLtool-72.png"
 
-# --- Configuration spécifique à l'application ---
-# Section utilisée par les scripts d'aide de spksrc, notamment pour les applications web.
-[application]
-# Indique que c'est une application Python.
-type="python"
-# Le script principal à lancer. Même si `start-stop-status` le fait manuellement,
-# cette ligne peut être utilisée par des mécanismes internes de spksrc.
-script="src/main.py"
-# Le port sur lequel le serveur web Python doit écouter.
-port="9989"
+# La section [application] a été supprimée. Nos scripts de contrôle gèrent déjà
+# le lancement du serveur Python, ce qui rend cette section redondante et
+# évite les conflits potentiels avec le système de compilation spksrc.
