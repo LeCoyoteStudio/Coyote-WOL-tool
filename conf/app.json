@@ -1,10 +1,35 @@
 {
   "app": {
-      "CoyoteWOLtool.App": {
-          "text": "Coyote WOL tool",
-          "icon": "images/CoyoteWOLtool-72.png",
-          "type": "url",
-          "url": "/webman/3rdparty/CoyoteWOLtool/"
+    "CoyoteWOLtool.App": {
+      "text": "Coyote WOL tool",
+      "icon": "images/CoyoteWOLtool-72.png",
+      "type": "url",
+      "url": "/webman/3rdparty/CoyoteWOLtool/"
+    }
+  },
+  "rules": [
+    {
+      "name": "SYNO.SDS.AdminCenter.Application.ApplicationPortal.Application",
+      "priv": {
+        "owner": ["administrators", "users"],
+        "min_version": "7.0"
       }
-  }
+    },
+    {
+      "name": "SYNO.SDS.AdminCenter.Application.ApplicationPortal.Profile",
+      "priv": {
+        "owner": ["administrators", "users"],
+        "min_version": "7.0"
+      }
+    },
+    {
+      "name": "SYNO.SDS.AdminCenter.ControlPanel.Security.SecurityScan",
+      "priv": {
+        "owner": ["administrators"],
+        "min_version": "7.0"
+      }
+    }
+  ],
+  "sso_url": "/webman/3rdparty/CoyoteWOLtool/",
+  "url": "/webman/3rdparty/CoyoteWOLtool/"
 }
