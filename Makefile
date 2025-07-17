@@ -1,53 +1,36 @@
-# Nom du workflow qui apparaîtra dans l'onglet "Actions" de GitHub.
-name: Build CoyoteWOLtool SPK
+# Makefile pour le paquet Synology CoyoteWOLtool
+# Ce fichier définit les variables et les règles nécessaires pour la compilation.
 
-# Définit les événements qui déclenchent l'exécution de ce workflow.
-on:
-  # Le workflow ne se déclenche plus automatiquement.
-  # Il ne peut être lancé que manuellement depuis l'interface GitHub.
-  workflow_dispatch:
+# --- Variables de base du paquet ---
+SPK_NAME = CoyoteWOLtool
+SPK_VERS = 0.1.7
+SPK_REV = 8 # Incrémentation de la révision pour le correctif de syntaxe.
+SPK_ICON = images/CoyoteWOLtool-72.png
 
-jobs:
-  build-spk:
-    # Le job s'exécutera sur une machine virtuelle utilisant la dernière version d'Ubuntu.
-    runs-on: ubuntu-latest
+# --- Métadonnées du paquet ---
+MAINTAINER = Coyote Studio
+DESCRIPTION = Scanne le réseau et permet de réveiller à distance les appareils via Wake-on-LAN.
+STARTABLE = yes
+DISPLAY_NAME = Coyote WOL tool
+CHANGELOG = "Correction de la syntaxe du Makefile (remplacement des espaces par des tabulations)."
 
-    steps:
-      # Étape 1 : Récupération du code source
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# --- Liens et licence ---
+HOMEPAGE = https://coyote.studio
+LICENSE = MIT
 
-      # Étape 2 : Mise en cache de l'environnement de compilation spksrc
-      - name: Cache spksrc directory
-        id: cache-spksrc
-        uses: actions/cache@v4
-        with:
-          path: /tmp/spksrc
-          # La clé de cache est 'v3' pour forcer une mise à jour.
-          key: ${{ runner.os }}-spksrc-v3
+# --- Cible d'installation ---
+# C'est la règle la plus importante. spksrc l'exécute pour copier les fichiers
+# de votre projet dans le répertoire de travail final avant la mise en paquet.
+# IMPORTANT : Les lignes de commande ci-dessous DOIVENT être indentées avec une tabulation, pas des espaces.
+install_target:
+	@echo "Copying all package files to installation directory..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp -a src $(INSTALL_DIR)/
+	@cp -a scripts $(INSTALL_DIR)/
+	@cp -a conf $(INSTALL_DIR)/
+	@cp -a images $(INSTALL_DIR)/
 
-      # Étape 3 : Clonage de spksrc si non disponible dans le cache
-      - name: Clone spksrc repository
-        if: steps.cache-spksrc.outputs.cache-hit != 'true'
-        run: |
-          echo "spksrc not found in cache. Cloning repository..."
-          git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
-        
-      # Étape 4 : Préparation de l'environnement de compilation
-      - name: Prepare build environment
-        run: |
-          echo "Preparing spksrc environment..."
-          mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
-          cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
-
-      # Étape 5 : Compilation du paquet
-      - name: Build the package
-        run: make -C /tmp/spksrc/spk/CoyoteWOLtool arch-noarch
-
-      # Étape 6 : Téléversement de l'artefact (le fichier .spk)
-      - name: Upload SPK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CoyoteWOLtool-SPK-Package
-          path: /tmp/spksrc/packages/CoyoteWOLtool-*.spk
-          retention-days: 30
+# --- Inclusion des règles de compilation standards ---
+# Cette ligne est cruciale. Elle importe toutes les règles de compilation standards
+# de spksrc, ce qui automatise la majeure partie du processus de construction du .spk.
+include ../../mk/spksrc.spk.mk
