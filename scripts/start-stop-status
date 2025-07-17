@@ -6,11 +6,10 @@
 
 # --- Variables de configuration ---
 PACKAGE_NAME="CoyoteWOLtool"
+# CORRECTION : Le chemin pointe maintenant directement vers le dossier du paquet.
 PACKAGE_DIR="/var/packages/${PACKAGE_NAME}"
-# Le dossier 'target' contient les fichiers de l'application.
-APP_DIR="${PACKAGE_DIR}/target"
 PYTHON_BIN="/usr/bin/python3"
-API_SCRIPT="${APP_DIR}/src/main.py"
+API_SCRIPT="${PACKAGE_DIR}/src/main.py"
 PID_FILE="${PACKAGE_DIR}/var/${PACKAGE_NAME}.pid"
 LOG_FILE="/var/log/${PACKAGE_NAME}.log"
 RUN_AS_USER="sc-${PACKAGE_NAME}"
