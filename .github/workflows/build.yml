@@ -1,5 +1,5 @@
 # Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Utilise la version v4 de upload-artifact et déclenchement manuel.
+# MISE À JOUR : Correction de la structure de l'archive .spk pour être valide pour DSM.
 name: Build Synology SPK Package (Manual)
 
 on:
@@ -29,30 +29,27 @@ jobs:
 
       - name: Build the SPK package
         run: |
-          # Crée la structure des répertoires pour le paquet
-          mkdir -p build/package
-          cp -r src/* build/package/
-          cp -r scripts/* build/package/
-          cp INFO build/package/
-          cp LICENSE build/package/
-          mkdir -p build/package/ui
-          cp src/frontend/index.html build/package/ui/
-          
-          # Copie les icônes pour l'assistant d'installation de DSM
-          mkdir -p build/package/WIZARD_UIFILES
-          cp assets/Icon.png build/package/WIZARD_UIFILES/PACKAGE_ICON.PNG
-          cp assets/Icon-72.png build/package/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
-          
-          # Crée l'archive .tgz contenant les fichiers du paquet
-          cd build/package
-          tar -czf ../package.tgz *
-          cd ../..
+          # 1. Créer le répertoire pour le contenu de l'application (le "payload")
+          mkdir -p payload
+          cp -r src/* payload/
+          cp -r scripts/* payload/
+          cp LICENSE payload/
 
-          # Crée le paquet final .spk
-          tar -cvf Coyote-WOL-tool.spk -C build package.tgz
+          # 2. Créer l'archive package.tgz à partir du contenu de l'application
+          tar -czf package.tgz -C payload .
+
+          # 3. Créer la structure racine du paquet .spk
+          mkdir -p spk_root/WIZARD_UIFILES
+          mv package.tgz spk_root/
+          cp INFO spk_root/
+          cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
+          cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
+
+          # 4. Créer le fichier .spk final à partir de la structure racine
+          tar -cvf Coyote-WOL-tool.spk -C spk_root .
 
       - name: Upload SPK artifact
-        uses: actions/upload-artifact@v4 # <-- MISE À JOUR ICI
+        uses: actions/upload-artifact@v4
         with:
           name: Coyote-WOL-tool-spk
           path: Coyote-WOL-tool.spk
