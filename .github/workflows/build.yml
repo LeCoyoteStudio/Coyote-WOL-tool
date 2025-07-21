@@ -1,34 +1,58 @@
-name: Build CoyoteWOLtool SPK
+# Rôle : Automatise la création du paquet .spk.
+# MISE À JOUR : Le déclenchement est maintenant uniquement manuel.
+name: Build Synology SPK Package (Manual)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Permet de lancer manuellement le build depuis l'interface GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # Étape 1: Récupérer le code de votre projet
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Check out the repository
+        uses: actions/checkout@v3
 
-      # Étape 2: Cloner l'environnement de compilation spksrc
-      - name: Clone spksrc
-        run: git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
-
-      # Étape 3: Préparer les fichiers pour la compilation
-      - name: Prepare build environment
-        run: |
-          mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
-          cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
-          
-      # Étape 4: Lancer la compilation
-      - name: Build the package
-        run: make -C /tmp/spksrc/spk/CoyoteWOLtool arch-noarch
-
-      # Étape 5: Téléverser le paquet .spk compilé comme un "artefact"
-      - name: Upload SPK artifact
-        uses: actions/upload-artifact@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          name: CoyoteWOLtool-spk
-          path: /tmp/spksrc/packages/*.spk
+          python-version: '3.9'
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
+
+      - name: Vendor Python dependencies
+        run: |
+          pip install --upgrade pip
+          mkdir -p src/vendor
+          # Télécharge les bibliothèques dans le dossier 'vendor'
+          pip install --platform manylinux1_x86_64 --target=src/vendor --implementation cp --python-version 3.9 --only-binary=:all: --upgrade Flask gunicorn scapy
+
+      - name: Build the SPK package
+        run: |
+          # Crée la structure des répertoires pour le paquet
+          mkdir -p build/package
+          cp -r src/* build/package/
+          cp -r scripts/* build/package/
+          cp INFO build/package/
+          cp LICENSE build/package/
+          mkdir -p build/package/ui
+          cp src/frontend/index.html build/package/ui/
+          
+          # Copie les icônes pour l'assistant d'installation de DSM
+          mkdir -p build/package/WIZARD_UIFILES
+          cp assets/Icon.png build/package/WIZARD_UIFILES/PACKAGE_ICON.PNG
+          cp assets/Icon-72.png build/package/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
+          
+          # Crée l'archive .tgz contenant les fichiers du paquet
+          cd build/package
+          tar -czf ../package.tgz *
+          cd ../..
+
+          # Crée le paquet final .spk
+          tar -cvf Coyote-WOL-tool.spk -C build package.tgz
+
+      - name: Upload SPK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Coyote-WOL-tool-spk
+          path: Coyote-WOL-tool.spk
