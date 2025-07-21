@@ -14,18 +14,22 @@ HOMEPAGE = https://github.com/LeCoyoteStudio/Coyote-WOL-tool
 LICENSE  = MIT
 
 STARTABLE = no
-SERVICE_SETUP = src/service-setup.sh   # only if you have one; else remove
 
-# ----------------------------------------------------------
-# Install section – REQUIRED
+# Tell spksrc where to install our files
+INSTALL_PREFIX = /var/packages/$(SPK_NAME)/target
+
+# ------------------------------------------------------------------
+# This rule **must** exist and **must** copy *something* into
+# $(STAGING_INSTALL_PREFIX) or the build will fail.
 include ../../mk/spksrc.spk.mk
 
-.PHONY: coyote_install
-coyote_install:
+# ---- install -----------------------------------------------------
+.PHONY: my_install
+my_install:
 	install -d $(STAGING_INSTALL_PREFIX)/bin
-	install -m 755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
+	install -m755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
 
 	install -d $(STAGING_INSTALL_PREFIX)/ui
 	cp -r src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
 
-install_target: coyote_install
+install_target: my_install
