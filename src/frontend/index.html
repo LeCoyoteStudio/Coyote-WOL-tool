@@ -3,316 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coyote WOL tool</title>
-    <!-- Utilise Jinja2 pour générer l'URL des fichiers statiques -->
-    <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Coyote WOL Tool</title>
+    <link rel="icon" type="image/png" href="/assets/Icon-72.png">
+    <style>
+        :root {
+            --bg-color: #f4f6f9; --card-bg: #ffffff; --text-color: #333;
+            --primary-color: #007bff; --primary-hover: #0056b3; --border-color: #dee2e6;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05); --status-online: #28a745;
+            --status-offline: #dc3545; --status-unknown: #6c757d;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; background-color: var(--bg-color); color: var(--text-color); line-height: 1.6;
+        }
+        .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center; padding: 15px;
+            background-color: var(--card-bg); border-radius: 8px; box-shadow: var(--shadow); margin-bottom: 20px;
+        }
+        header img { height: 40px; }
+        .controls { display: flex; align-items: center; gap: 15px; }
+        .controls label { font-weight: 500; }
+        .controls select, .controls button {
+            padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 5px;
+            background-color: #fff; cursor: pointer; font-size: 14px;
+        }
+        .controls button {
+            background-color: var(--primary-color); color: #fff; border-color: var(--primary-color);
+            transition: background-color 0.2s;
+        }
+        .controls button:hover { background-color: var(--primary-hover); }
+        .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .device-card {
+            background-color: var(--card-bg); border-radius: 8px; box-shadow: var(--shadow);
+            padding: 20px; display: flex; flex-direction: column; transition: transform 0.2s;
+        }
+        .device-card:hover { transform: translateY(-3px); }
+        .device-header {
+            display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;
+        }
+        .device-name { font-size: 1.1em; font-weight: 600; }
+        .status-dot {
+            height: 12px; width: 12px; border-radius: 50%; background-color: var(--status-unknown);
+            flex-shrink: 0; margin-left: 10px; animation: pulse 2s infinite;
+        }
+        .status-dot.online { background-color: var(--status-online); animation: none; }
+        .status-dot.offline { background-color: var(--status-offline); animation: none; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(108, 117, 125, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(108, 117, 125, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(108, 117, 125, 0); }
+        }
+        .device-info { font-size: 0.9em; color: #666; word-break: break-all; }
+        .device-info p { margin: 4px 0; }
+        .device-actions { margin-top: auto; padding-top: 15px; display: flex; gap: 10px; }
+        .action-btn {
+            flex-grow: 1; padding: 10px; border: none; border-radius: 5px; color: #fff;
+            font-weight: 500; cursor: pointer; transition: opacity 0.2s;
+        }
+        .action-btn:hover { opacity: 0.85; }
+        .btn-wol { background-color: #17a2b8; }
+        .btn-ping { background-color: #ffc107; color: #333; }
+        .loader { text-align: center; padding: 40px; font-size: 1.2em; }
+        footer { text-align: center; margin-top: 30px; padding: 20px; color: #888; font-size: 0.9em; }
+    </style>
 </head>
 <body>
-
-    <!-- Conteneur principal de l'application -->
     <div class="container">
-        <div id="mainPage">
-            <header>
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
-                <h1 data-i18n="my_devices">Mes Appareils</h1>
-                <div class="header-controls">
-                    <select id="languageSelector" title="Changer de langue"></select>
-                    <button id="refreshButton" title="Rafraîchir la liste" aria-label="Rafraîchir la liste">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-                    </button>
-                </div>
-            </header>
-            
-            <main id="deviceListContainer"></main>
-            
-            <div id="loading" class="full-center"><p data-i18n="loading">Chargement des appareils...</p></div>
-            <div id="error" class="full-center hidden"><p id="errorMessage"></p></div>
-        </div>
-        
-        <footer>
-            <p>Coyote WOL tool - by Coyote Studio</p>
-        </footer>
+        <header>
+            <img src="/assets/Logo-Coyote.png" alt="Coyote Studio Logo">
+            <div class="controls">
+                <label for="lang-select">Language:</label>
+                <select id="lang-select">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                </select>
+                <button id="refresh-btn">Refresh</button>
+            </div>
+        </header>
+        <main>
+            <div id="device-list" class="device-list"><div class="loader">Loading devices...</div></div>
+        </main>
+        <footer>Coyote WOL Tool - © 2025 Le Coyote Studio</footer>
     </div>
-
-    <!-- Modale pour éditer un appareil (cachée par défaut) -->
-    <div id="editModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h2 data-i18n="edit_device_title">Éditer l'appareil</h2>
-            <form id="editForm">
-                <input type="hidden" id="editMac">
-                <div class="form-group">
-                    <label for="customName" data-i18n="custom_name_label">Nom personnalisé</label>
-                    <input type="text" id="customName" placeholder="ex: PC de bureau">
-                </div>
-                <div class="form-group-checkbox">
-                    <input type="checkbox" id="isFavorite">
-                    <label for="isFavorite" data-i18n="favorite_label">Marquer comme favori</label>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" id="cancelButton" data-i18n="cancel_button">Annuler</button>
-                    <button type="submit" id="saveButton" data-i18n="save_button">Sauvegarder</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Conteneur pour les notifications (toast) -->
-    <div id="notification-container"></div>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Namespace pour organiser le code
-            const app = {
-                // --- Éléments du DOM ---
-                dom: {
-                    deviceListContainer: document.getElementById('deviceListContainer'),
-                    loadingIndicator: document.getElementById('loading'),
-                    errorContainer: document.getElementById('error'),
-                    errorMessage: document.getElementById('errorMessage'),
-                    languageSelector: document.getElementById('languageSelector'),
-                    refreshButton: document.getElementById('refreshButton'),
-                    editModal: {
-                        overlay: document.getElementById('editModal'),
-                        form: document.getElementById('editForm'),
-                        macInput: document.getElementById('editMac'),
-                        nameInput: document.getElementById('customName'),
-                        favoriteInput: document.getElementById('isFavorite'),
-                        cancelButton: document.getElementById('cancelButton'),
-                        saveButton: document.getElementById('saveButton'),
-                    },
-                    notificationContainer: document.getElementById('notification-container'),
-                },
+            const deviceList = document.getElementById('device-list');
+            const langSelect = document.getElementById('lang-select');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const getApiHeaders = () => ({ 'Accept-Language': langSelect.value, 'Content-Type': 'application/json' });
 
-                // --- État de l'application ---
-                state: {
-                    currentLang: 'en',
-                    devices: [],
-                },
-
-                // --- Traductions ---
-                i18n: {
-                    translations: {
-                        en: { my_devices: "My Devices", loading: "Loading devices...", no_devices: "No devices found.", wake_device_title: "Wake up device", packet_sent_notif: "Wake-up packet sent to {mac}.", error_notif: "Error: {message}", edit_device_title: "Edit Device", custom_name_label: "Custom Name", favorite_label: "Mark as favorite", cancel_button: "Cancel", save_button: "Save", update_success_notif: "Device updated successfully." },
-                        fr: { my_devices: "Mes Appareils", loading: "Chargement des appareils...", no_devices: "Aucun appareil trouvé.", wake_device_title: "Réveiller l'appareil", packet_sent_notif: "Paquet de réveil envoyé à {mac}.", error_notif: "Erreur : {message}", edit_device_title: "Éditer l'appareil", custom_name_label: "Nom personnalisé", favorite_label: "Marquer comme favori", cancel_button: "Annuler", save_button: "Sauvegarder", update_success_notif: "Appareil mis à jour avec succès." },
-                    },
-                    langNames: { en: "English", fr: "Français" },
-                    
-                    // Fonction de traduction
-                    t(key, replacements = {}) {
-                        let text = this.translations[app.state.currentLang]?.[key] || this.translations.en[key] || key;
-                        for (const [k, v] of Object.entries(replacements)) {
-                            text = text.replace(`{${k}}`, v);
-                        }
-                        return text;
-                    },
-
-                    // Applique la langue à toute l'interface
-                    setLanguage(lang) {
-                        app.state.currentLang = lang;
-                        localStorage.setItem('coyoteWolLanguage', lang);
-                        document.documentElement.lang = lang;
-                        document.querySelectorAll('[data-i18n]').forEach(el => {
-                            el.textContent = this.t(el.dataset.i18n);
-                        });
-                        // Mettre à jour les titres dynamiques
-                        app.dom.refreshButton.title = this.t('wake_device_title');
-                        app.dom.refreshButton.setAttribute('aria-label', this.t('wake_device_title'));
-                    }
-                },
-
-                // --- API (Communication avec le backend) ---
-                api: {
-                    async call(endpoint, options = {}) {
-                        const url = new URL(endpoint, window.location.origin);
-                        url.searchParams.append('lang', app.state.currentLang);
-                        const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...options.headers };
-                        
-                        try {
-                            const response = await fetch(url.toString(), { ...options, headers });
-                            const data = await response.json();
-                            if (!response.ok) {
-                                throw new Error(data.message || data.error || "Communication error");
-                            }
-                            return data;
-                        } catch (error) {
-                            console.error(`API call to ${endpoint} failed:`, error);
-                            throw error;
-                        }
-                    },
-                    getDevices() { return this.call('/api/devices'); },
-                    pingDevice(ip) { return this.call(`/api/ping/${ip}`); },
-                    wakeupDevice(mac) { return this.call('/api/wakeup', { method: 'POST', body: JSON.stringify({ mac }) }); },
-                    updateDevice(mac, data) { return this.call(`/api/device/${mac}`, { method: 'PUT', body: JSON.stringify(data) }); },
-                },
-
-                // --- UI (Mise à jour de l'interface) ---
-                ui: {
-                    // Affiche une notification
-                    showNotification(message, type = 'success') {
-                        const notif = document.createElement('div');
-                        notif.className = `notification ${type}`;
-                        notif.textContent = message;
-                        app.dom.notificationContainer.appendChild(notif);
-                        setTimeout(() => {
-                            notif.classList.add('fade-out');
-                            setTimeout(() => notif.remove(), 500);
-                        }, 4000);
-                    },
-
-                    // Affiche ou cache la modale d'édition
-                    toggleEditModal(show = false, device = null) {
-                        if (show && device) {
-                            app.dom.editModal.macInput.value = device.mac;
-                            app.dom.editModal.nameInput.value = device.custom_name || '';
-                            app.dom.editModal.favoriteInput.checked = device.is_favorite === 1;
-                            app.dom.editModal.overlay.classList.remove('hidden');
-                        } else {
-                            app.dom.editModal.overlay.classList.add('hidden');
-                            app.dom.editModal.form.reset();
-                        }
-                    },
-
-                    // Crée la carte HTML pour un appareil
-                    createDeviceCard(device) {
-                        const displayName = device.custom_name || device.hostname || 'Unknown Device';
-                        const card = document.createElement('div');
-                        card.className = `device-card ${device.is_favorite ? 'favorite' : ''}`;
-                        card.dataset.mac = device.mac;
-                        
-                        card.innerHTML = `
-                            <div class="status-container" id="status-container-${device.mac.replace(/:/g, '')}">
-                                <div class="status-dot pending"></div>
-                            </div>
-                            <div class="device-info">
-                                <p class="name" title="${displayName}">${displayName}</p>
-                                <p class="mac">${device.mac}</p>
-                            </div>
-                            <div class="device-actions">
-                                <button class="action-button favorite-button" title="Marquer comme favori" aria-label="Marquer comme favori">
-                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                </button>
-                                <button class="action-button wake-button" title="${app.i18n.t('wake_device_title')}" aria-label="${app.i18n.t('wake_device_title')}">
-                                    <svg viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
-                                </button>
-                            </div>
-                        `;
-                        return card;
-                    },
-
-                    // Rafraîchit la liste complète des appareils
-                    async renderDevices() {
-                        app.dom.loadingIndicator.style.display = 'block';
-                        app.dom.errorContainer.classList.add('hidden');
-                        app.dom.deviceListContainer.innerHTML = '';
-                        
-                        try {
-                            app.state.devices = await app.api.getDevices();
-                            if (app.state.devices.length === 0) {
-                                app.dom.deviceListContainer.innerHTML = `<div class="full-center"><p>${app.i18n.t('no_devices')}</p></div>`;
-                            } else {
-                                app.state.devices.forEach(device => {
-                                    const card = this.createDeviceCard(device);
-                                    app.dom.deviceListContainer.appendChild(card);
-                                    app.api.pingDevice(device.ip).then(result => {
-                                        const statusDot = card.querySelector('.status-dot');
-                                        if (statusDot) statusDot.className = `status-dot ${result.status}`;
-                                    });
-                                });
-                            }
-                        } catch (error) {
-                            app.dom.errorContainer.classList.remove('hidden');
-                            app.dom.errorMessage.textContent = error.message;
-                        } finally {
-                            app.dom.loadingIndicator.style.display = 'none';
-                        }
-                    }
-                },
-
-                // --- Gestion des événements ---
-                events: {
-                    init() {
-                        app.dom.refreshButton.addEventListener('click', () => app.ui.renderDevices());
-                        app.dom.languageSelector.addEventListener('change', (e) => {
-                            app.i18n.setLanguage(e.target.value);
-                            app.ui.renderDevices();
-                        });
-
-                        // Clics sur la liste des appareils (délégation d'événements)
-                        app.dom.deviceListContainer.addEventListener('click', this.handleDeviceListClick);
-                        
-                        // Événements de la modale
-                        app.dom.editModal.cancelButton.addEventListener('click', () => app.ui.toggleEditModal(false));
-                        app.dom.editModal.overlay.addEventListener('click', (e) => {
-                            if (e.target === app.dom.editModal.overlay) app.ui.toggleEditModal(false);
-                        });
-                        app.dom.editModal.form.addEventListener('submit', this.handleSave);
-                    },
-
-                    async handleDeviceListClick(event) {
-                        const target = event.target;
-                        const card = target.closest('.device-card');
-                        if (!card) return;
-                        
-                        const mac = card.dataset.mac;
-
-                        if (target.closest('.wake-button')) {
-                            try {
-                                const result = await app.api.wakeupDevice(mac);
-                                app.ui.showNotification(result.message, 'success');
-                                setTimeout(() => app.ui.renderDevices(), 5000); // Refresh after 5s
-                            } catch (e) {
-                                app.ui.showNotification(e.message, 'error');
-                            }
-                        } else if (target.closest('.name')) {
-                            const device = app.state.devices.find(d => d.mac === mac);
-                            if (device) app.ui.toggleEditModal(true, device);
-                        }
-                    },
-
-                    async handleSave(event) {
-                        event.preventDefault();
-                        const mac = app.dom.editModal.macInput.value;
-                        const data = {
-                            custom_name: app.dom.editModal.nameInput.value,
-                            is_favorite: app.dom.editModal.favoriteInput.checked ? 1 : 0,
-                        };
-                        
-                        try {
-                            const result = await app.api.updateDevice(mac, data);
-                            app.ui.showNotification(result.message, 'success');
-                            app.ui.toggleEditModal(false);
-                            app.ui.renderDevices();
-                        } catch (e) {
-                            app.ui.showNotification(e.message, 'error');
-                        }
-                    }
-                },
-
-                // --- Initialisation de l'application ---
-                init() {
-                    // Peuple le sélecteur de langue
-                    Object.entries(app.i18n.langNames).forEach(([code, name]) => {
-                        const option = document.createElement('option');
-                        option.value = code;
-                        option.textContent = name;
-                        app.dom.languageSelector.appendChild(option);
-                    });
-
-                    // Définit la langue initiale
-                    const savedLang = localStorage.getItem('coyoteWolLanguage');
-                    const browserLang = navigator.language.split('-')[0];
-                    const initialLang = savedLang || (app.i18n.translations[browserLang] ? browserLang : 'en');
-                    app.dom.languageSelector.value = initialLang;
-                    
-                    app.i18n.setLanguage(initialLang);
-                    app.events.init();
-                    app.ui.renderDevices();
+            const fetchDevices = async () => {
+                deviceList.innerHTML = '<div class="loader">Loading devices...</div>';
+                try {
+                    const response = await fetch('/api/devices');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const devices = await response.json();
+                    renderDevices(devices);
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    deviceList.innerHTML = '<div class="loader">Failed to load devices.</div>';
                 }
             };
 
-            // Démarrage de l'application
-            app.init();
+            const renderDevices = (devices) => {
+                deviceList.innerHTML = '';
+                if (devices.length === 0) {
+                    deviceList.innerHTML = '<div class="loader">No devices found. The network scan might be in progress.</div>';
+                    return;
+                }
+                devices.forEach(device => {
+                    const card = document.createElement('div');
+                    card.className = 'device-card';
+                    card.innerHTML = `
+                        <div class="device-header">
+                            <span class="device-name">${device.custom_name || device.ip}</span>
+                            <div class="status-dot" id="status-${device.mac.replace(/:/g, '')}"></div>
+                        </div>
+                        <div class="device-info">
+                            <p><strong>IP:</strong> ${device.ip}</p>
+                            <p><strong>MAC:</strong> ${device.mac}</p>
+                            <p><strong>Last Seen:</strong> ${new Date(device.last_seen).toLocaleString()}</p>
+                        </div>
+                        <div class="device-actions">
+                            <button class="action-btn btn-ping" data-ip="${device.ip}" data-mac="${device.mac}">Ping</button>
+                            <button class="action-btn btn-wol" data-mac="${device.mac}">Wake Up</button>
+                        </div>`;
+                    deviceList.appendChild(card);
+                });
+            };
+
+            deviceList.addEventListener('click', async (e) => {
+                const target = e.target;
+                if (target.classList.contains('btn-wol')) {
+                    const mac = target.dataset.mac;
+                    target.textContent = 'Sending...'; target.disabled = true;
+                    try {
+                        const response = await fetch(`/api/wol/${mac}`, { method: 'POST', headers: getApiHeaders() });
+                        const result = await response.json();
+                        alert(result.message);
+                    } catch (error) { alert('An error occurred.'); } 
+                    finally { target.textContent = 'Wake Up'; target.disabled = false; }
+                }
+                if (target.classList.contains('btn-ping')) {
+                    const ip = target.dataset.ip;
+                    const mac = target.dataset.mac;
+                    const statusDot = document.getElementById(`status-${mac.replace(/:/g, '')}`);
+                    target.textContent = 'Pinging...'; target.disabled = true;
+                    statusDot.className = 'status-dot';
+                    try {
+                        const response = await fetch(`/api/ping/${ip}`, { headers: getApiHeaders() });
+                        const result = await response.json();
+                        statusDot.classList.add(result.status);
+                    } catch (error) {
+                        statusDot.classList.add('offline');
+                        alert('An error occurred during ping.');
+                    } finally { target.textContent = 'Ping'; target.disabled = false; }
+                }
+            });
+
+            refreshBtn.addEventListener('click', fetchDevices);
+            langSelect.addEventListener('change', fetchDevices);
+            fetchDevices();
         });
     </script>
 </body>
