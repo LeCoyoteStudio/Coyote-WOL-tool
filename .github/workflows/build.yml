@@ -1,5 +1,5 @@
 # Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Ajout d'une étape de débogage pour lister le contenu de l'archive .spk finale.
+# MISE À JOUR : Ajout du dossier 'conf' pour la gestion des privilèges.
 name: Build Synology SPK Package (Manual)
 
 on:
@@ -38,6 +38,7 @@ jobs:
           mkdir -p payload
           cp -r src/* payload/
           cp -r scripts/* payload/
+          cp -r conf/* payload/
           cp LICENSE payload/
 
           # 2. Créer l'archive package.tgz à partir du contenu de l'application
@@ -47,12 +48,14 @@ jobs:
           mkdir -p spk_root/WIZARD_UIFILES
           mv package.tgz spk_root/
           cp INFO spk_root/
+          # Copie le dossier conf à la racine du spk également
+          cp -r conf spk_root/
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
           # 4. Créer le fichier .spk final en utilisant fakeroot
           cd spk_root
-          fakeroot tar -cvf ../Coyote-WOL-tool.spk INFO package.tgz WIZARD_UIFILES
+          fakeroot tar -cvf ../Coyote-WOL-tool.spk *
           cd ..
 
       - name: Debug - List SPK archive contents
