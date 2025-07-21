@@ -1,5 +1,5 @@
 # Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Ajout du dossier 'conf' pour la gestion des privilèges.
+# MISE À JOUR : Simplification et correction de la structure de l'archive pour une conformité stricte avec DSM 7.
 name: Build Synology SPK Package (Manual)
 
 on:
@@ -37,8 +37,8 @@ jobs:
           # 1. Créer le répertoire pour le contenu de l'application (le "payload")
           mkdir -p payload
           cp -r src/* payload/
-          cp -r scripts/* payload/
-          cp -r conf/* payload/
+          # Le dossier 'scripts' ne va plus dans package.tgz, mais à la racine du .spk
+          # cp -r scripts/* payload/ 
           cp LICENSE payload/
 
           # 2. Créer l'archive package.tgz à partir du contenu de l'application
@@ -48,8 +48,8 @@ jobs:
           mkdir -p spk_root/WIZARD_UIFILES
           mv package.tgz spk_root/
           cp INFO spk_root/
-          # Copie le dossier conf à la racine du spk également
           cp -r conf spk_root/
+          cp -r scripts spk_root/
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
