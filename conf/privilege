@@ -1,6 +1,6 @@
 {
     "defaults": {
-        "run-as": "http"
+        "run-as": "coyotewol"
     },
     "program-privilege": {
         "/usr/local/bin/python3": {
