@@ -13,15 +13,13 @@ LICENSE  = MIT
 
 STARTABLE = no
 
-# -------------------------------------------------------------
 include ../../mk/spksrc.spk.mk
 
-# This rule is **mandatory** – it populates the staging directory
+# ----------------------------------------------------------
+# MUST exist – tells spksrc how to fill the staging directory
 install_target:
-	@echo "=== DBG: start install ==============="
 	@install -vd $(STAGING_INSTALL_PREFIX)/bin
 	@install -v  -m755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
 
 	@install -vd $(STAGING_INSTALL_PREFIX)/ui
 	@cp -vr src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
-	@echo "=== DBG: install finished ============"
