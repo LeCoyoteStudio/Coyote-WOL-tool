@@ -1,53 +1,36 @@
-# Nom du workflow qui apparaîtra dans l'onglet "Actions" de GitHub.
 name: Build CoyoteWOLtool SPK
 
-# Définit les événements qui déclenchent l'exécution de ce workflow.
 on:
-  # Le workflow ne se déclenche plus automatiquement.
-  # Il ne peut être lancé que manuellement depuis l'interface GitHub.
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-spk:
-    # Le job s'exécutera sur une machine virtuelle utilisant la dernière version d'Ubuntu.
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1 : Récupération du code source
+      # Étape 1: Récupérer le code de votre projet
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Étape 2 : Mise en cache de l'environnement de compilation spksrc
-      - name: Cache spksrc directory
-        id: cache-spksrc
-        uses: actions/cache@v4
-        with:
-          path: /tmp/spksrc
-          # La clé de cache est 'v3' pour forcer une mise à jour.
-          key: ${{ runner.os }}-spksrc-v3
+      # Étape 2: Cloner l'environnement de compilation spksrc
+      - name: Clone spksrc
+        run: git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
 
-      # Étape 3 : Clonage de spksrc si non disponible dans le cache
-      - name: Clone spksrc repository
-        if: steps.cache-spksrc.outputs.cache-hit != 'true'
-        run: |
-          echo "spksrc not found in cache. Cloning repository..."
-          git clone https://github.com/SynoCommunity/spksrc.git /tmp/spksrc
-        
-      # Étape 4 : Préparation de l'environnement de compilation
+      # Étape 3: Préparer les fichiers pour la compilation
       - name: Prepare build environment
         run: |
-          echo "Preparing spksrc environment..."
           mkdir -p /tmp/spksrc/spk/CoyoteWOLtool
           cp -a $GITHUB_WORKSPACE/* /tmp/spksrc/spk/CoyoteWOLtool/
-
-      # Étape 5 : Compilation du paquet
+          
+      # Étape 4: Lancer la compilation
       - name: Build the package
         run: make -C /tmp/spksrc/spk/CoyoteWOLtool arch-noarch
 
-      # Étape 6 : Téléversement de l'artefact (le fichier .spk)
+      # Étape 5: Téléverser le paquet .spk compilé comme un "artefact"
       - name: Upload SPK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CoyoteWOLtool-SPK-Package
-          path: /tmp/spksrc/packages/CoyoteWOLtool-*.spk
-          retention-days: 30
+          name: CoyoteWOLtool-spk
+          path: /tmp/spksrc/packages/*.spk
