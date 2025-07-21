@@ -1,5 +1,5 @@
 # Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Correction de la commande d'archivage finale pour une compatibilité maximale avec DSM.
+# MISE À JOUR : Ajout d'une étape de débogage pour lister le contenu de l'archive .spk finale.
 name: Build Synology SPK Package (Manual)
 
 on:
@@ -27,6 +27,11 @@ jobs:
           # Télécharge les bibliothèques dans le dossier 'vendor'
           pip install --platform manylinux1_x86_64 --target=src/vendor --implementation cp --python-version 3.9 --only-binary=:all: --upgrade Flask gunicorn scapy
 
+      - name: Prepare INFO file with DSM version
+        run: |
+          # Ajoute la version minimale de DSM au fichier INFO
+          echo 'os_min_ver="7.0-40000"' >> INFO
+
       - name: Build the SPK package
         run: |
           # 1. Créer le répertoire pour le contenu de l'application (le "payload")
@@ -36,7 +41,6 @@ jobs:
           cp LICENSE payload/
 
           # 2. Créer l'archive package.tgz à partir du contenu de l'application
-          # L'option --owner=0 --group=0 assure une meilleure compatibilité
           tar --owner=0 --group=0 -czf package.tgz -C payload .
 
           # 3. Créer la structure racine du paquet .spk
@@ -46,11 +50,16 @@ jobs:
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
-          # 4. Créer le fichier .spk final de manière plus explicite
-          # On liste chaque élément pour s'assurer qu'aucun fichier indésirable n'est inclus
+          # 4. Créer le fichier .spk final en utilisant fakeroot
           cd spk_root
-          tar --owner=0 --group=0 -cvf ../Coyote-WOL-tool.spk INFO package.tgz WIZARD_UIFILES
+          fakeroot tar -cvf ../Coyote-WOL-tool.spk INFO package.tgz WIZARD_UIFILES
           cd ..
+
+      - name: Debug - List SPK archive contents
+        run: |
+          echo "--- Listing contents of Coyote-WOL-tool.spk ---"
+          tar -tvf Coyote-WOL-tool.spk
+          echo "------------------------------------------------"
 
       - name: Upload SPK artifact
         uses: actions/upload-artifact@v4
