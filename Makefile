@@ -1,26 +1,17 @@
 SPK_NAME = CoyoteWOLtool
-SPK_VERS = 1.0.0
-SPK_REV  = 1
-SPK_ICON = src/ui/static/icon.png
+SPK_VERS = 0.2.0
+SPK_REV = 1
+SPK_ICON = images/CoyoteWOLtool-72.png
 
 MAINTAINER = Coyote Studio
-DESCRIPTION = Wake-on-LAN utility for Synology DSM
+DESCRIPTION = Scanne le réseau et permet de réveiller à distance les appareils via Wake-on-LAN.
+STARTABLE = yes
 DISPLAY_NAME = Coyote WOL tool
-CHANGELOG = Initial release
+CHANGELOG = "Correction du Makefile pour utiliser les règles de compilation Python (spksrc.python-module.mk)."
 
-HOMEPAGE = https://github.com/LeCoyoteStudio/Coyote-WOL-tool
-LICENSE  = MIT
+HOMEPAGE = https://coyote.studio
+LICENSE = MIT
 
-STARTABLE = no
-
-include ../../mk/spksrc.spk.mk
-
-.PHONY: coyote_install
-coyote_install:
-	install -vd $(STAGING_INSTALL_PREFIX)/bin
-	install -v  -m755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
-
-	install -vd $(STAGING_INSTALL_PREFIX)/ui
-	cp -vr src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
-
-install_target: coyote_install
+# Inclusion des règles de compilation spécifiques aux modules Python
+# C'est cette ligne qui résout le problème de création du paquet.
+include ../../mk/spksrc.python-module.mk
