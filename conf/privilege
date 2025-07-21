@@ -1,0 +1,17 @@
+{
+  "defaults": {
+    "run-as": "coyotewol"
+  },
+  "programs": [
+    {
+      "path": "/var/packages/coyotewol/target/vendor/gunicorn/app/wsgiapp.py",
+      "run-as": "root",
+      "caps": "CAP_NET_ADMIN,CAP_NET_RAW"
+    },
+    {
+        "path": "/usr/local/bin/python3",
+        "run-as": "root",
+        "caps": "CAP_NET_ADMIN,CAP_NET_RAW"
+    }
+  ]
+}
