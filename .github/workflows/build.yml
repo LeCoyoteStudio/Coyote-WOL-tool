@@ -1,5 +1,5 @@
 # Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Correction de la structure de l'archive .spk pour être valide pour DSM.
+# MISE À JOUR : Correction de la commande d'archivage finale pour une compatibilité maximale avec DSM.
 name: Build Synology SPK Package (Manual)
 
 on:
@@ -36,7 +36,8 @@ jobs:
           cp LICENSE payload/
 
           # 2. Créer l'archive package.tgz à partir du contenu de l'application
-          tar -czf package.tgz -C payload .
+          # L'option --owner=0 --group=0 assure une meilleure compatibilité
+          tar --owner=0 --group=0 -czf package.tgz -C payload .
 
           # 3. Créer la structure racine du paquet .spk
           mkdir -p spk_root/WIZARD_UIFILES
@@ -45,8 +46,11 @@ jobs:
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
-          # 4. Créer le fichier .spk final à partir de la structure racine
-          tar -cvf Coyote-WOL-tool.spk -C spk_root .
+          # 4. Créer le fichier .spk final de manière plus explicite
+          # On liste chaque élément pour s'assurer qu'aucun fichier indésirable n'est inclus
+          cd spk_root
+          tar --owner=0 --group=0 -cvf ../Coyote-WOL-tool.spk INFO package.tgz WIZARD_UIFILES
+          cd ..
 
       - name: Upload SPK artifact
         uses: actions/upload-artifact@v4
