@@ -1,78 +1,20 @@
 #!/bin/sh
+# Rôle : Démarre le serveur web Gunicorn lorsque le paquet est lancé.
 
-# ==============================================================================
-# Script de post-installation pour CoyoteWOLtool
-# ==============================================================================
+PACKAGE_DIR="/var/packages/coyotewol/target"
+# Utilise le chemin relatif vers Gunicorn qui est inclus dans le paquet
+GUNICORN_EXECUTABLE="${PACKAGE_DIR}/vendor/gunicorn/app/wsgiapp.py"
+PYTHON_EXECUTABLE="/usr/local/bin/python3"
+PID_FILE="${PACKAGE_DIR}/gunicorn.pid"
+LOG_FILE="${PACKAGE_DIR}/coyote_wol.log"
 
-# --- Variables de configuration ---
-PACKAGE_NAME="CoyoteWOLtool"
-# CORRECTION : Le chemin pointe maintenant directement vers le dossier du paquet,
-# car le sous-dossier 'target' a été supprimé pour simplifier la structure.
-PACKAGE_DIR="/var/packages/${PACKAGE_NAME}"
-PYTHON_BIN="/usr/bin/python3"
-PIP_BIN="/usr/bin/pip3"
-REQUIREMENTS_FILE="${PACKAGE_DIR}/src/requirements.txt"
-SCANNER_SCRIPT="${PACKAGE_DIR}/src/scanner.py"
-VAR_DIR="${PACKAGE_DIR}/var"
-DB_FILE="${VAR_DIR}/devices.db"
-LOG_FILE="/var/log/${PACKAGE_NAME}.log"
+cd ${PACKAGE_DIR}
 
-# --- Début du script ---
-exec > ${LOG_FILE} 2>&1
-
-echo "=================================================="
-echo "Starting ${PACKAGE_NAME} post-installation script (v4-final)"
-echo "Date: $(date)"
-echo "=================================================="
-
-# Étape 1: Installation des dépendances Python
-echo "[STEP 1/5] Installing Python dependencies from ${REQUIREMENTS_FILE}..."
-if ${PIP_BIN} install --no-python-version-warning -r ${REQUIREMENTS_FILE}; then
-    echo "Python dependencies installed successfully."
-else
-    echo "ERROR: Failed to install Python dependencies. Check pip logs."
-    exit 1
-fi
-
-# Étape 2: Création des répertoires et de la base de données
-echo "[STEP 2/5] Creating data directory and database file..."
-if mkdir -p ${VAR_DIR}; then
-    echo "Data directory ${VAR_DIR} created or already exists."
-else
-    echo "ERROR: Failed to create data directory ${VAR_DIR}."
-    exit 1
-fi
-touch ${DB_FILE}
-
-# Étape 3: Définition des permissions
-echo "[STEP 3/5] Setting ownership for data directory..."
-if chown -R sc-${PACKAGE_NAME}:sc-${PACKAGE_NAME} ${VAR_DIR}; then
-    echo "Ownership set successfully for ${VAR_DIR}."
-else
-    echo "ERROR: Failed to set ownership for ${VAR_DIR}."
-    exit 1
-fi
-
-# Étape 4: Initialisation de la base de données
-echo "[STEP 4/5] Initializing the database schema..."
-if ${PYTHON_BIN} ${SCANNER_SCRIPT} --init-db; then
-    echo "Database initialized successfully."
-else
-    echo "ERROR: Failed to initialize the database."
-    exit 1
-fi
-
-# Étape 5: Création de la tâche planifiée pour le scan réseau
-TASK_NAME="${PACKAGE_NAME}_Scan"
-echo "[STEP 5/5] Creating scheduled task '${TASK_NAME}'..."
-if /usr/syno/bin/synoschedtask --add name="${TASK_NAME}" script="${PYTHON_BIN} ${SCANNER_SCRIPT}" minute="*/10" state="enabled" user="root"; then
-    echo "Scheduled task created successfully to run every 10 minutes."
-else
-    echo "ERROR: Failed to create scheduled task."
-fi
-
-echo "=================================================="
-echo "Post-installation script finished successfully."
-echo "=================================================="
-
-exit 0
+${PYTHON_EXECUTABLE} ${GUNICORN_EXECUTABLE} \
+    --workers 1 \
+    --bind 0.0.0.0:5001 \
+    --pid ${PID_FILE} \
+    --log-level info \
+    --log-file ${LOG_FILE} \
+    --daemon \
+    main:app
