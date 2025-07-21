@@ -1,4 +1,10 @@
 bin/coyote-wol-backend
 ui/index.html
-ui/static/Logo-Coyote.png
 ui/static/Icon.png
+ui/static/Logo-Coyote.png
+ui/static/coyote-wol.css
+ui/static/coyote-wol.js
+ui/static/i18n/en.json
+ui/static/i18n/fr.json
+ui/static/i18n/es.json
+ui/static/i18n/de.json
