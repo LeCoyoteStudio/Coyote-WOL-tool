@@ -1,7 +1,7 @@
 SPK_NAME = CoyoteWOLtool
 SPK_VERS = 1.0.0
 SPK_REV  = 1
-SPK_ICON = src/ui/static/icon.png   # lowercase is fine
+SPK_ICON = src/ui/static/icon.png
 
 MAINTAINER = Coyote Studio
 DESCRIPTION = Wake-on-LAN utility for Synology DSM
@@ -13,16 +13,14 @@ LICENSE  = MIT
 
 STARTABLE = no
 
-# ----------------------------------------------------------
-# This rule **must** exist – otherwise staging stays empty
 include ../../mk/spksrc.spk.mk
 
 .PHONY: coyote_install
 coyote_install:
-	@install -vd $(STAGING_INSTALL_PREFIX)/bin
-	@install -v  -m755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
+	install -vd $(STAGING_INSTALL_PREFIX)/bin
+	install -v  -m755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
 
-	@install -vd $(STAGING_INSTALL_PREFIX)/ui
-	@cp -vr src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
+	install -vd $(STAGING_INSTALL_PREFIX)/ui
+	cp -vr src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
 
 install_target: coyote_install
