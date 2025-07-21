@@ -14,8 +14,17 @@ HOMEPAGE = https://github.com/LeCoyoteStudio/Coyote-WOL-tool
 LICENSE  = MIT
 
 STARTABLE = no
-SERVICE_SETUP = src/service-setup.sh
 
-SPK_DEPENDS = "Python3>=3.8"
-
+# ---- install instructions ----------------------------------------------------
 include ../../mk/spksrc.spk.mk
+
+.PHONY: coyote_wol_install
+coyote_wol_install:
+	@install -d $(STAGING_INSTALL_PREFIX)/bin
+	@install -m 755 src/coyote-wol-backend $(STAGING_INSTALL_PREFIX)/bin/
+
+	@install -d $(STAGING_INSTALL_PREFIX)/ui
+	@cp -r src/ui/* $(STAGING_INSTALL_PREFIX)/ui/
+
+# hook into spksrc build system
+install_target: coyote_wol_install
