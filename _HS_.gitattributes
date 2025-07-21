@@ -1,3 +1,0 @@
-# This file ensures that all text files use Linux-style line endings (LF).
-# This is crucial for compatibility with the Synology build environment and GitHub Actions.
-* text=auto eol=lf
