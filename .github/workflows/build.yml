@@ -1,11 +1,37 @@
-- name: Build the SPK package
+name: Build Synology SPK Package (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y tar
+
+      - name: Vendor Python dependencies
         run: |
-          # 1. Créer le répertoire pour le contenu de l'application (le "payload")
+          pip install --upgrade pip
+          mkdir -p src/vendor
+          pip install --platform manylinux1_x86_64 --target=src/vendor --implementation cp --python-version 3.9 --only-binary=:all: --upgrade Flask gunicorn scapy
+
+      - name: Build the SPK package
+        run: |
+          # 1. Créer le répertoire pour le contenu de l'application
           mkdir -p payload
           cp -r src/* payload/
           cp LICENSE payload/
 
-          # 2. Créer l'archive package.tgz SANS forcer l'owner à root
+          # 2. Créer l'archive package.tgz (SANS forcer l'owner à root)
           tar -czf package.tgz -C payload .
 
           # 3. Créer la structure racine du paquet .spk
@@ -17,7 +43,16 @@
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
-          # 4. Créer le fichier .spk final SANS fakeroot
+          # 4. Créer le fichier .spk final (SANS fakeroot)
           cd spk_root
           tar -cvf ../Coyote-WOL-tool.spk *
           cd ..
+
+      - name: Debug - List SPK archive contents
+        run: tar -tvf Coyote-WOL-tool.spk
+
+      - name: Upload SPK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coyote-WOL-tool-spk
+          path: Coyote-WOL-tool.spk
