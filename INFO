@@ -1,9 +1,9 @@
-# Rôle : Fichier de métadonnées qui décrit le paquet au Centre de Paquets de Synology.
 package="coyotewol"
 version="2.2.0"
 displayname="Coyote WOL Tool (Hybrid)"
 description="A tool to scan the local network and wake up devices via WOL."
 maintainer="Le Coyote Studio"
+admin_privilege="yes"
 arch="noarch"
 startable="yes"
 install_dep_packages="python3"
