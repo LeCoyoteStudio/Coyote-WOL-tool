@@ -1,41 +1,12 @@
-# Rôle : Automatise la création du paquet .spk.
-# MISE À JOUR : Inclut le dossier 'conf' complet avec 'privilege' et 'resource'.
-name: Build Synology SPK Package (Manual)
-
-on:
-  workflow_dispatch: # Permet de lancer manuellement le build depuis l'interface GitHub
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y fakeroot
-
-      - name: Vendor Python dependencies
-        run: |
-          pip install --upgrade pip
-          mkdir -p src/vendor
-          # Télécharge les bibliothèques dans le dossier 'vendor'
-          pip install --platform manylinux1_x86_64 --target=src/vendor --implementation cp --python-version 3.9 --only-binary=:all: --upgrade Flask gunicorn scapy
-
-      - name: Build the SPK package
+- name: Build the SPK package
         run: |
           # 1. Créer le répertoire pour le contenu de l'application (le "payload")
           mkdir -p payload
           cp -r src/* payload/
           cp LICENSE payload/
 
-          # 2. Créer l'archive package.tgz à partir du contenu de l'application
-          tar --owner=0 --group=0 -czf package.tgz -C payload .
+          # 2. Créer l'archive package.tgz SANS forcer l'owner à root
+          tar -czf package.tgz -C payload .
 
           # 3. Créer la structure racine du paquet .spk
           mkdir -p spk_root/WIZARD_UIFILES
@@ -46,19 +17,7 @@ jobs:
           cp assets/Icon.png spk_root/WIZARD_UIFILES/PACKAGE_ICON.PNG
           cp assets/Icon-72.png spk_root/WIZARD_UIFILES/PACKAGE_ICON_72.PNG
 
-          # 4. Créer le fichier .spk final en utilisant fakeroot
+          # 4. Créer le fichier .spk final SANS fakeroot
           cd spk_root
-          fakeroot tar -cvf ../Coyote-WOL-tool.spk *
+          tar -cvf ../Coyote-WOL-tool.spk *
           cd ..
-
-      - name: Debug - List SPK archive contents
-        run: |
-          echo "--- Listing contents of Coyote-WOL-tool.spk ---"
-          tar -tvf Coyote-WOL-tool.spk
-          echo "------------------------------------------------"
-
-      - name: Upload SPK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Coyote-WOL-tool-spk
-          path: Coyote-WOL-tool.spk
