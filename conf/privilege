@@ -1,10 +1,9 @@
 {
-    "defaults": {
-        "run-as": "coyotewol"
-    },
-    "program-privilege": {
-        "/usr/local/bin/python3": {
-            "caps": "cap_net_admin,cap_net_raw"
+    "root": {
+        "program": {
+            "/usr/local/bin/python3": {
+                "caps": "cap_net_admin,cap_net_raw"
+            }
         }
     }
 }
